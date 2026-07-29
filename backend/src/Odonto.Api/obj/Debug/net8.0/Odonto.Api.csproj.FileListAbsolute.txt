@@ -17,8 +17,6 @@ E:\odontologos\backend\src\Odonto.Api\bin\Debug\net8.0\Microsoft.IdentityModel.P
 E:\odontologos\backend\src\Odonto.Api\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
 E:\odontologos\backend\src\Odonto.Api\bin\Debug\net8.0\Microsoft.IdentityModel.Tokens.dll
 E:\odontologos\backend\src\Odonto.Api\bin\Debug\net8.0\Microsoft.OpenApi.dll
-E:\odontologos\backend\src\Odonto.Api\bin\Debug\net8.0\Npgsql.dll
-E:\odontologos\backend\src\Odonto.Api\bin\Debug\net8.0\Npgsql.EntityFrameworkCore.PostgreSQL.dll
 E:\odontologos\backend\src\Odonto.Api\bin\Debug\net8.0\Swashbuckle.AspNetCore.Swagger.dll
 E:\odontologos\backend\src\Odonto.Api\bin\Debug\net8.0\Swashbuckle.AspNetCore.SwaggerGen.dll
 E:\odontologos\backend\src\Odonto.Api\bin\Debug\net8.0\Swashbuckle.AspNetCore.SwaggerUI.dll
@@ -53,3 +51,11 @@ E:\odontologos\backend\src\Odonto.Api\obj\Debug\net8.0\refint\Odonto.Api.dll
 E:\odontologos\backend\src\Odonto.Api\obj\Debug\net8.0\Odonto.Api.pdb
 E:\odontologos\backend\src\Odonto.Api\obj\Debug\net8.0\Odonto.Api.genruntimeconfig.cache
 E:\odontologos\backend\src\Odonto.Api\obj\Debug\net8.0\ref\Odonto.Api.dll
+E:\odontologos\backend\src\Odonto.Api\bin\Debug\net8.0\Microsoft.Extensions.Caching.Memory.dll
+E:\odontologos\backend\src\Odonto.Api\bin\Debug\net8.0\Microsoft.Extensions.DependencyInjection.dll
+E:\odontologos\backend\src\Odonto.Api\bin\Debug\net8.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+E:\odontologos\backend\src\Odonto.Api\bin\Debug\net8.0\Microsoft.Extensions.Logging.dll
+E:\odontologos\backend\src\Odonto.Api\bin\Debug\net8.0\Microsoft.Extensions.Logging.Abstractions.dll
+E:\odontologos\backend\src\Odonto.Api\bin\Debug\net8.0\Microsoft.Extensions.Options.dll
+E:\odontologos\backend\src\Odonto.Api\bin\Debug\net8.0\MySqlConnector.dll
+E:\odontologos\backend\src\Odonto.Api\bin\Debug\net8.0\Pomelo.EntityFrameworkCore.MySql.dll
