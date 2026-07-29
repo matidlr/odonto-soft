@@ -86,6 +86,39 @@ public class AuthController : ControllerBase
         return Ok(new { tenantId = tenant.Id, estado = tenant.Estado.ToString() });
     }
 
+    public record BootstrapSuperAdminRequest(string Email, string Password, string BootstrapKey);
+
+    /// <summary>
+    /// Crea el usuario SuperAdmin (vos, el dueño de la plataforma). Pensado para
+    /// usarse una sola vez, protegido por una clave que solo vos conocés
+    /// (configurada en appsettings como Bootstrap:Key). No aparece en ningún
+    /// link público ni lo va a usar un odontólogo.
+    /// </summary>
+    [HttpPost("bootstrap-superadmin")]
+    public async Task<IActionResult> BootstrapSuperAdmin(BootstrapSuperAdminRequest request, CancellationToken ct)
+    {
+        var expectedKey = _configuration["Bootstrap:Key"];
+        if (string.IsNullOrEmpty(expectedKey) || request.BootstrapKey != expectedKey)
+            return Unauthorized(new { message = "Clave de bootstrap inválida." });
+
+        if (await _db.Usuarios.IgnoreQueryFilters().AnyAsync(u => u.Rol == Rol.SuperAdmin, ct))
+            return Conflict(new { message = "Ya existe un SuperAdmin. Este endpoint es solo para la creación inicial." });
+
+        var usuario = new Usuario
+        {
+            TenantId = null,
+            Email = request.Email,
+            Rol = Rol.SuperAdmin,
+            EstaActivo = true
+        };
+        usuario.PasswordHash = _passwordHasher.HashPassword(usuario, request.Password);
+
+        _db.Usuarios.Add(usuario);
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new { usuario.Id, message = "SuperAdmin creado. Iniciá sesión con /api/auth/login." });
+    }
+
     public record LoginRequest(string Email, string Password);
 
     [HttpPost("login")]

@@ -1,7 +1,9 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Odonto.Api.Authorization;
 using Odonto.Infrastructure;
 using Odonto.Infrastructure.Persistence;
 
@@ -61,7 +63,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    // Política que exigen los endpoints de negocio (pacientes, turnos, etc.):
+    // el tenant del usuario tiene que estar Activo (o ser SuperAdmin).
+    options.AddPolicy("TenantActivo", policy => policy.Requirements.Add(new TenantActivoRequirement()));
+});
+builder.Services.AddScoped<IAuthorizationHandler, TenantActivoHandler>();
 
 builder.Services.AddCors(options =>
 {
