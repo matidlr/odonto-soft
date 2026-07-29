@@ -30,6 +30,7 @@ public class AuthController : ControllerBase
     public record RegistrarOdontologoRequest(
         string NombreClinica,
         string Slug,
+        string NombreOdontologo,
         string Email,
         string Password,
         string Matricula,
@@ -64,6 +65,7 @@ public class AuthController : ControllerBase
         var usuario = new Usuario
         {
             TenantId = tenant.Id,
+            Nombre = request.NombreOdontologo,
             Email = request.Email,
             Rol = Rol.Owner,
             EstaActivo = true
