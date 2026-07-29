@@ -10,6 +10,12 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.8" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <!-- Necesario acá (además de en Infrastructure) porque dotnet-ef inspecciona
+         el proyecto de arranque, y PrivateAssets en Infrastructure no propaga. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.13">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
