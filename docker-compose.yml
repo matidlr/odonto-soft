@@ -6,22 +6,23 @@ services:
     ports:
       - "5000:8080"
     environment:
-      - ConnectionStrings__Default=Host=db;Port=5432;Database=odonto;Username=odonto;Password=odonto_dev_password
+      - ConnectionStrings__Default=Server=db;Port=3306;Database=odonto;User=odonto;Password=odonto_dev_password
       - Jwt__Key=${JWT_KEY:-CHANGE_ME_super_secret_key_min_32_chars_prod}
       - ASPNETCORE_ENVIRONMENT=Development
     depends_on:
       - db
 
   db:
-    image: postgres:16
+    image: mysql:8.4
     environment:
-      - POSTGRES_DB=odonto
-      - POSTGRES_USER=odonto
-      - POSTGRES_PASSWORD=odonto_dev_password
+      - MYSQL_DATABASE=odonto
+      - MYSQL_USER=odonto
+      - MYSQL_PASSWORD=odonto_dev_password
+      - MYSQL_ROOT_PASSWORD=odonto_root_password
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - db_data:/var/lib/mysql
 
 volumes:
   db_data:

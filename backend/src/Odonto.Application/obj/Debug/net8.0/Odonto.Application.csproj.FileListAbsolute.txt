@@ -1,0 +1,16 @@
+E:\odontologos\backend\src\Odonto.Application\bin\Debug\net8.0\Odonto.Application.deps.json
+E:\odontologos\backend\src\Odonto.Application\bin\Debug\net8.0\Odonto.Application.dll
+E:\odontologos\backend\src\Odonto.Application\bin\Debug\net8.0\Odonto.Application.pdb
+E:\odontologos\backend\src\Odonto.Application\bin\Debug\net8.0\Odonto.Domain.dll
+E:\odontologos\backend\src\Odonto.Application\bin\Debug\net8.0\Odonto.Domain.pdb
+E:\odontologos\backend\src\Odonto.Application\obj\Debug\net8.0\Odonto.Application.csproj.AssemblyReference.cache
+E:\odontologos\backend\src\Odonto.Application\obj\Debug\net8.0\Odonto.Application.GeneratedMSBuildEditorConfig.editorconfig
+E:\odontologos\backend\src\Odonto.Application\obj\Debug\net8.0\Odonto.Application.AssemblyInfoInputs.cache
+E:\odontologos\backend\src\Odonto.Application\obj\Debug\net8.0\Odonto.Application.AssemblyInfo.cs
+E:\odontologos\backend\src\Odonto.Application\obj\Debug\net8.0\Odonto.Application.csproj.CoreCompileInputs.cache
+E:\odontologos\backend\src\Odonto.Application\obj\Debug\net8.0\Odonto.Application.sourcelink.json
+E:\odontologos\backend\src\Odonto.Application\obj\Debug\net8.0\Odonto.A.22157AE5.Up2Date
+E:\odontologos\backend\src\Odonto.Application\obj\Debug\net8.0\Odonto.Application.dll
+E:\odontologos\backend\src\Odonto.Application\obj\Debug\net8.0\refint\Odonto.Application.dll
+E:\odontologos\backend\src\Odonto.Application\obj\Debug\net8.0\Odonto.Application.pdb
+E:\odontologos\backend\src\Odonto.Application\obj\Debug\net8.0\ref\Odonto.Application.dll

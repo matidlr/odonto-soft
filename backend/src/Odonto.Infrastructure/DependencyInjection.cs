@@ -13,8 +13,9 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<ITenantContext, TenantContext>();
 
+        var connectionString = configuration.GetConnectionString("Default");
         services.AddDbContext<AppDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("Default")));
+            options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
         return services;
     }
