@@ -1,0 +1,47 @@
+<div class="login-page">
+  <form class="login-card" (ngSubmit)="onSubmit()" #form="ngForm">
+    <h1>Registrá tu clínica</h1>
+    <p class="subtitulo">Creá tu cuenta de odontólogo/a</p>
+
+    <label for="nombreClinica">Nombre de la clínica</label>
+    <input id="nombreClinica" name="nombreClinica" type="text" [(ngModel)]="nombreClinica" required />
+
+    <label for="slug">Slug (para tu link público, sin espacios)</label>
+    <input id="slug" name="slug" type="text" [(ngModel)]="slug" required />
+
+    <label for="nombreOdontologo">Tu nombre</label>
+    <input id="nombreOdontologo" name="nombreOdontologo" type="text" [(ngModel)]="nombreOdontologo" required />
+
+    <label for="matricula">Matrícula</label>
+    <input id="matricula" name="matricula" type="text" [(ngModel)]="matricula" required />
+
+    <label for="especialidad">Especialidad (opcional)</label>
+    <input id="especialidad" name="especialidad" type="text" [(ngModel)]="especialidad" />
+
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" [(ngModel)]="email" required autocomplete="email" />
+
+    <label for="password">Contraseña</label>
+    <input
+      id="password"
+      name="password"
+      type="password"
+      [(ngModel)]="password"
+      required
+      minlength="8"
+      autocomplete="new-password"
+    />
+
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
+
+    <button type="submit" [disabled]="form.invalid || cargando()">
+      {{ cargando() ? 'Creando cuenta...' : 'Crear cuenta' }}
+    </button>
+
+    <p class="link-registro">
+      ¿Ya tenés cuenta? <a routerLink="/login">Iniciá sesión</a>
+    </p>
+  </form>
+</div>

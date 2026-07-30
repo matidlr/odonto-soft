@@ -1,0 +1,38 @@
+<div class="login-page">
+  <form class="login-card" (ngSubmit)="onSubmit()" #form="ngForm">
+    <h1>Odonto SaaS</h1>
+    <p class="subtitulo">Iniciá sesión</p>
+
+    <label for="email">Email</label>
+    <input
+      id="email"
+      name="email"
+      type="email"
+      [(ngModel)]="email"
+      required
+      autocomplete="email"
+    />
+
+    <label for="password">Contraseña</label>
+    <input
+      id="password"
+      name="password"
+      type="password"
+      [(ngModel)]="password"
+      required
+      autocomplete="current-password"
+    />
+
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
+
+    <button type="submit" [disabled]="form.invalid || cargando()">
+      {{ cargando() ? 'Ingresando...' : 'Ingresar' }}
+    </button>
+
+    <p class="link-registro">
+      ¿No tenés cuenta? <a routerLink="/registro">Registrá tu clínica</a>
+    </p>
+  </form>
+</div>
