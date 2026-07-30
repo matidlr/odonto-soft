@@ -121,6 +121,33 @@ public class AuthController : ControllerBase
         return Ok(new { usuario.Id, message = "SuperAdmin creado. Iniciá sesión con /api/auth/login." });
     }
 
+    public record ResetSuperAdminPasswordRequest(string NewPassword, string BootstrapKey);
+
+    /// <summary>
+    /// Recupera el acceso al SuperAdmin si se te perdió la contraseña.
+    /// Protegido con la misma Bootstrap:Key (solo vos la tenés). Busca al
+    /// único usuario con Rol=SuperAdmin y le resetea la contraseña.
+    /// </summary>
+    [HttpPost("reset-superadmin-password")]
+    public async Task<IActionResult> ResetSuperAdminPassword(ResetSuperAdminPasswordRequest request, CancellationToken ct)
+    {
+        var expectedKey = _configuration["Bootstrap:Key"];
+        if (string.IsNullOrEmpty(expectedKey) || request.BootstrapKey != expectedKey)
+            return Unauthorized(new { message = "Clave de bootstrap inválida." });
+
+        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 8)
+            return BadRequest(new { message = "La contraseña debe tener al menos 8 caracteres." });
+
+        var superAdmin = await _db.Usuarios.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Rol == Rol.SuperAdmin, ct);
+        if (superAdmin is null)
+            return NotFound(new { message = "No existe ningún SuperAdmin todavía. Usá /bootstrap-superadmin." });
+
+        superAdmin.PasswordHash = _passwordHasher.HashPassword(superAdmin, request.NewPassword);
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new { superAdmin.Email, message = "Contraseña actualizada." });
+    }
+
     public record LoginRequest(string Email, string Password);
 
     [HttpPost("login")]
