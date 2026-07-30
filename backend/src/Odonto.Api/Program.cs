@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -6,6 +7,11 @@ using Microsoft.IdentityModel.Tokens;
 using Odonto.Api.Authorization;
 using Odonto.Infrastructure;
 using Odonto.Infrastructure.Persistence;
+
+// Por defecto, .NET remapea nombres de claims "conocidos" (email, sub, etc.)
+// a URIs largas de esquemas antiguos al validar el JWT. Lo desactivamos para
+// que los claims queden exactamente como los emitimos ("email", "rol", "tenant_id").
+JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
 
 var builder = WebApplication.CreateBuilder(args);
 

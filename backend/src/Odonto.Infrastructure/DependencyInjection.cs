@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Odonto.Application.Common.Interfaces;
 using Odonto.Infrastructure.Notificaciones;
+using Odonto.Infrastructure.Payments;
 using Odonto.Infrastructure.Persistence;
 
 namespace Odonto.Infrastructure;
@@ -20,6 +21,8 @@ public static class DependencyInjection
 
         services.AddHttpClient<IEmailSender, BrevoEmailSender>();
         services.AddHostedService<RecordatorioBackgroundService>();
+
+        services.AddHttpClient<MercadoPagoService>();
 
         return services;
     }
