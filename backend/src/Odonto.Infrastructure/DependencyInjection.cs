@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Odonto.Application.Common.Interfaces;
+using Odonto.Infrastructure.Notificaciones;
 using Odonto.Infrastructure.Persistence;
 
 namespace Odonto.Infrastructure;
@@ -16,6 +17,9 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString("Default");
         services.AddDbContext<AppDbContext>(options =>
             options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+
+        services.AddHttpClient<IEmailSender, BrevoEmailSender>();
+        services.AddHostedService<RecordatorioBackgroundService>();
 
         return services;
     }
