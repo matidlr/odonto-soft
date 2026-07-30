@@ -1,15 +1,16 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Odonto.Domain.Entities;
 using Odonto.Infrastructure.Persistence;
 
 namespace Odonto.Api.Controllers;
 
 /// <summary>
-/// Primer endpoint "de negocio" real. Sirve para probar dos cosas a la vez:
-/// 1) que el filtro global por TenantId en AppDbContext funciona solo
-///    (no hace falta filtrar a mano acá).
-/// 2) que la policy TenantActivo bloquea el acceso si el tenant no está activo.
+/// Pacientes vistos/gestionados por el odontólogo o la recepción.
+/// El alta pública (vía link, sin login) vive en PublicController; este
+/// POST es para cuando el consultorio carga al paciente directamente
+/// (por ejemplo, alguien que llama por teléfono o no usa el link solo).
 /// </summary>
 [ApiController]
 [Route("api/pacientes")]
@@ -31,5 +32,38 @@ public class PacientesController : ControllerBase
             .ToListAsync(ct);
 
         return Ok(pacientes);
+    }
+
+    public record CrearPacienteRequest(
+        string Nombre,
+        string? Dni,
+        string? Telefono,
+        string? Email,
+        DateTime? FechaNacimiento);
+
+    [HttpPost]
+    public async Task<IActionResult> Crear(CrearPacienteRequest request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Nombre))
+            return BadRequest(new { message = "El nombre es obligatorio." });
+
+        var tenantIdClaim = User.FindFirst("tenant_id")?.Value;
+        if (!Guid.TryParse(tenantIdClaim, out var tenantId))
+            return BadRequest(new { message = "No se pudo determinar el tenant del usuario." });
+
+        var paciente = new Paciente
+        {
+            TenantId = tenantId,
+            Nombre = request.Nombre,
+            Dni = request.Dni,
+            Telefono = request.Telefono,
+            Email = request.Email,
+            FechaNacimiento = request.FechaNacimiento
+        };
+
+        _db.Pacientes.Add(paciente);
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new { paciente.Id });
     }
 }

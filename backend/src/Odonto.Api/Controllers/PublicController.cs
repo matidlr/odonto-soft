@@ -214,38 +214,10 @@ public class PublicController : ControllerBase
         };
 
         _db.Turnos.Add(turno);
-        await _db.SaveChangesAsync(ct);
 
-        // Recordatorios: siempre 2hs antes; 24hs antes solo si se reservó
-        // con más de una semana de anticipación respecto a la fecha del turno.
-        // Por día calendario, no por horas exactas: reservar el 29 para el
-        // 5 cuenta como "una semana", sin importar la hora del día de cada uno.
-        var diasDeAnticipacion = (turno.FechaHora.Date - turno.FechaCreacion.Date).TotalDays;
-        var notificaciones = new List<Notificacion>();
-
-        foreach (var canal in new[] { CanalNotificacion.Email, CanalNotificacion.WhatsApp })
-        {
-            notificaciones.Add(new Notificacion
-            {
-                TurnoId = turno.Id,
-                Canal = canal,
-                TipoRecordatorio = TipoRecordatorio.H2,
-                FechaEnvioProgramada = turno.FechaHora.AddHours(-2)
-            });
-
-            if (diasDeAnticipacion > 7)
-            {
-                notificaciones.Add(new Notificacion
-                {
-                    TurnoId = turno.Id,
-                    Canal = canal,
-                    TipoRecordatorio = TipoRecordatorio.H24,
-                    FechaEnvioProgramada = turno.FechaHora.AddHours(-24)
-                });
-            }
-        }
-
+        var notificaciones = RecordatorioScheduler.Generar(turno);
         _db.Notificaciones.AddRange(notificaciones);
+
         await _db.SaveChangesAsync(ct);
 
         return Ok(new

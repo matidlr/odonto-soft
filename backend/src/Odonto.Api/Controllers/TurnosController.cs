@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Odonto.Application.Agenda;
 using Odonto.Domain.Common;
+using Odonto.Domain.Entities;
 using Odonto.Infrastructure.Persistence;
 
 namespace Odonto.Api.Controllers;
@@ -50,6 +52,73 @@ public class TurnosController : ControllerBase
             .ToListAsync(ct);
 
         return Ok(turnos);
+    }
+
+    public record ReservarTurnoManualRequest(Guid PacienteId, Guid OdontologoId, Guid? TipoTratamientoId, DateTime FechaHora);
+
+    /// <summary>
+    /// Reserva manual desde el consultorio (por ejemplo, un paciente que
+    /// llama por teléfono, o alguien a quien le cuesta el autoservicio).
+    /// Misma lógica que la reserva pública, pero sin pasar por el slug:
+    /// el tenant sale del JWT y el filtro global ya restringe todo lo demás.
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> Crear(ReservarTurnoManualRequest request, CancellationToken ct)
+    {
+        var paciente = await _db.Pacientes.FirstOrDefaultAsync(p => p.Id == request.PacienteId, ct);
+        if (paciente is null) return BadRequest(new { message = "Paciente inválido." });
+
+        var odontologo = await _db.Odontologos.FirstOrDefaultAsync(o => o.Id == request.OdontologoId, ct);
+        if (odontologo is null) return BadRequest(new { message = "Odontólogo inválido." });
+
+        var duracionMinutos = 30;
+        if (request.TipoTratamientoId is Guid ttId)
+        {
+            var tipoTratamiento = await _db.TiposTratamiento.FirstOrDefaultAsync(t => t.Id == ttId, ct);
+            if (tipoTratamiento is null) return BadRequest(new { message = "Tipo de tratamiento inválido." });
+            duracionMinutos = tipoTratamiento.DuracionMinutos;
+        }
+
+        var fin = request.FechaHora.AddMinutes(duracionMinutos);
+        var haySolapamiento = await _db.Turnos.AnyAsync(t =>
+            t.OdontologoId == request.OdontologoId &&
+            t.Estado != TurnoEstado.Cancelado &&
+            t.FechaHora < fin &&
+            request.FechaHora < t.FechaHora.AddMinutes(t.DuracionMinutos), ct);
+
+        if (haySolapamiento)
+            return Conflict(new { message = "Ese horario ya no está disponible." });
+
+        var tenantIdClaim = User.FindFirst("tenant_id")?.Value;
+        if (!Guid.TryParse(tenantIdClaim, out var tenantId))
+            return BadRequest(new { message = "No se pudo determinar el tenant del usuario." });
+
+        var turno = new Turno
+        {
+            TenantId = tenantId,
+            OdontologoId = request.OdontologoId,
+            PacienteId = request.PacienteId,
+            TipoTratamientoId = request.TipoTratamientoId,
+            FechaHora = request.FechaHora,
+            DuracionMinutos = duracionMinutos,
+            Estado = TurnoEstado.Solicitado
+        };
+
+        _db.Turnos.Add(turno);
+
+        var notificaciones = RecordatorioScheduler.Generar(turno);
+        _db.Notificaciones.AddRange(notificaciones);
+
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new
+        {
+            turno.Id,
+            turno.FechaHora,
+            turno.DuracionMinutos,
+            Estado = turno.Estado.ToString(),
+            recordatoriosProgramados = notificaciones.Count
+        });
     }
 
     public record CambiarEstadoRequest(TurnoEstado Estado);
