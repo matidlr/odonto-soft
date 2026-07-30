@@ -4,9 +4,31 @@ import { authGuard } from './core/auth.guard';
 export const routes: Routes = [
   {
     path: '',
-    pathMatch: 'full',
     canActivate: [authGuard],
-    loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent)
+    loadComponent: () =>
+      import('./layout/panel-layout.component').then((m) => m.PanelLayoutComponent),
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'inicio' },
+      {
+        path: 'inicio',
+        loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent)
+      },
+      {
+        path: 'agenda',
+        loadComponent: () =>
+          import('./features/agenda/agenda.component').then((m) => m.AgendaComponent)
+      },
+      {
+        path: 'pacientes',
+        loadComponent: () =>
+          import('./features/pacientes/pacientes.component').then((m) => m.PacientesComponent)
+      },
+      {
+        path: 'admin/tenants',
+        loadComponent: () =>
+          import('./features/admin/tenants.component').then((m) => m.AdminTenantsComponent)
+      }
+    ]
   },
   {
     path: 'login',

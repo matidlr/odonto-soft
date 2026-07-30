@@ -1,0 +1,55 @@
+<h1>Tenants (SuperAdmin)</h1>
+
+@if (error()) {
+  <p class="error">{{ error() }}</p>
+}
+
+@if (cargando()) {
+  <p>Cargando...</p>
+} @else if (tenants().length === 0) {
+  <p>No hay tenants todavía.</p>
+} @else {
+  <table class="tabla-tenants">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Slug</th>
+        <th>Estado</th>
+        <th>Alta</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (t of tenants(); track t.id) {
+        <tr>
+          <td>{{ t.nombre }}</td>
+          <td>{{ t.slug }}</td>
+          <td>
+            <span class="estado" [class]="'estado-' + t.estado">{{ t.estado }}</span>
+          </td>
+          <td>{{ t.fechaAlta | date: 'short' }}</td>
+          <td class="acciones">
+            @if (t.estado !== 'Activo') {
+              <button
+                class="btn-activar"
+                [disabled]="procesandoId() === t.id"
+                (click)="activar(t)"
+              >
+                Activar
+              </button>
+            }
+            @if (t.estado !== 'Suspendido') {
+              <button
+                class="btn-suspender"
+                [disabled]="procesandoId() === t.id"
+                (click)="suspender(t)"
+              >
+                Suspender
+              </button>
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

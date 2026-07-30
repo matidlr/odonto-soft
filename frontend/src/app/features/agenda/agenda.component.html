@@ -1,0 +1,105 @@
+<div class="header">
+  <h1>Agenda</h1>
+  <button (click)="mostrarForm.set(!mostrarForm())">
+    {{ mostrarForm() ? 'Cancelar' : '+ Nuevo turno' }}
+  </button>
+</div>
+
+<div class="filtros">
+  <label>
+    Desde
+    <input type="date" [(ngModel)]="desde" (change)="cargarTurnos()" />
+  </label>
+  <label>
+    Hasta
+    <input type="date" [(ngModel)]="hasta" (change)="cargarTurnos()" />
+  </label>
+</div>
+
+@if (mostrarForm()) {
+  <form class="form-turno" (ngSubmit)="crearTurno()" #form="ngForm">
+    <div class="fila">
+      <label>Paciente*</label>
+      <select name="paciente" [(ngModel)]="nuevoPacienteId" required>
+        <option value="" disabled>Elegí un paciente</option>
+        @for (p of pacientes(); track p.id) {
+          <option [value]="p.id">{{ p.nombre }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="fila">
+      <label>Odontólogo*</label>
+      <select name="odontologo" [(ngModel)]="nuevoOdontologoId" required>
+        <option value="" disabled>Elegí un odontólogo</option>
+        @for (o of odontologos(); track o.id) {
+          <option [value]="o.id">{{ o.nombre }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="fila">
+      <label>Tipo de tratamiento</label>
+      <select name="tratamiento" [(ngModel)]="nuevoTipoTratamientoId">
+        <option value="">(sin especificar, 30 min por defecto)</option>
+        @for (t of tiposTratamiento(); track t.id) {
+          <option [value]="t.id">{{ t.nombre }} ({{ t.duracionMinutos }} min)</option>
+        }
+      </select>
+    </div>
+
+    <div class="fila">
+      <label>Fecha y hora*</label>
+      <input type="datetime-local" name="fechaHora" [(ngModel)]="nuevaFechaHora" required />
+    </div>
+
+    @if (errorForm()) {
+      <p class="error">{{ errorForm() }}</p>
+    }
+
+    <button type="submit" [disabled]="form.invalid || guardando()">
+      {{ guardando() ? 'Reservando...' : 'Reservar turno' }}
+    </button>
+  </form>
+}
+
+@if (error()) {
+  <p class="error">{{ error() }}</p>
+}
+
+@if (cargando()) {
+  <p>Cargando...</p>
+} @else if (turnos().length === 0) {
+  <p>No hay turnos en ese rango de fechas.</p>
+} @else {
+  <table class="tabla-turnos">
+    <thead>
+      <tr>
+        <th>Fecha y hora</th>
+        <th>Paciente</th>
+        <th>Odontólogo</th>
+        <th>Tratamiento</th>
+        <th>Duración</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (t of turnos(); track t.id) {
+        <tr [class.cancelado]="t.estado === 'Cancelado'">
+          <td>{{ t.fechaHora | date: 'short' }}</td>
+          <td>{{ t.pacienteNombre }}</td>
+          <td>{{ nombreOdontologo()(t.odontologoId) }}</td>
+          <td>{{ nombreTratamiento()(t.tipoTratamientoId) }}</td>
+          <td>{{ t.duracionMinutos }} min</td>
+          <td>
+            <select [ngModel]="t.estado" (ngModelChange)="cambiarEstado(t, $event)">
+              @for (e of estados; track e) {
+                <option [value]="e">{{ e }}</option>
+              }
+            </select>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

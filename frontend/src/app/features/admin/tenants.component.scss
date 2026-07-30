@@ -1,0 +1,75 @@
+.error {
+  color: #d02828;
+}
+
+.tabla-tenants {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+
+  th,
+  td {
+    text-align: left;
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid #eee;
+  }
+
+  th {
+    background: #f1f5f9;
+    font-size: 0.8rem;
+    color: #555;
+  }
+}
+
+.estado {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.estado-Activo {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.estado-PendienteDeActivacion {
+  background: #fff3cd;
+  color: #92700c;
+}
+
+.estado-Suspendido {
+  background: #f8d7da;
+  color: #842029;
+}
+
+.acciones {
+  display: flex;
+  gap: 0.5rem;
+
+  button {
+    padding: 0.35rem 0.7rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+  }
+
+  .btn-activar {
+    background: #16803c;
+    color: white;
+  }
+
+  .btn-suspender {
+    background: #b91c1c;
+    color: white;
+  }
+}

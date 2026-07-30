@@ -10,6 +10,14 @@ export interface MiTenant {
   estado: 'PendienteDeActivacion' | 'Activo' | 'Suspendido' | string;
 }
 
+export interface TenantResumen {
+  id: string;
+  nombre: string;
+  slug: string;
+  estado: string;
+  fechaAlta: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class TenantService {
   constructor(private http: HttpClient) {}
@@ -22,5 +30,19 @@ export class TenantService {
     } catch {
       return null;
     }
+  }
+
+  // Estos tres son solo para SuperAdmin (el backend los rechaza para
+  // cualquier otro rol con 403).
+  getAll(): Promise<TenantResumen[]> {
+    return firstValueFrom(this.http.get<TenantResumen[]>(`${API_BASE_URL}/tenants`));
+  }
+
+  activar(id: string): Promise<void> {
+    return firstValueFrom(this.http.put<void>(`${API_BASE_URL}/tenants/${id}/activar`, {}));
+  }
+
+  suspender(id: string): Promise<void> {
+    return firstValueFrom(this.http.put<void>(`${API_BASE_URL}/tenants/${id}/suspender`, {}));
   }
 }

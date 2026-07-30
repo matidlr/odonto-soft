@@ -1,0 +1,62 @@
+<div class="header">
+  <h1>Pacientes</h1>
+  <button (click)="mostrarForm.set(!mostrarForm())">
+    {{ mostrarForm() ? 'Cancelar' : '+ Nuevo paciente' }}
+  </button>
+</div>
+
+@if (mostrarForm()) {
+  <form class="form-paciente" (ngSubmit)="crear()" #form="ngForm">
+    <div class="fila">
+      <label>Nombre*</label>
+      <input name="nombre" type="text" [(ngModel)]="nombre" required />
+    </div>
+    <div class="fila">
+      <label>DNI</label>
+      <input name="dni" type="text" [(ngModel)]="dni" />
+    </div>
+    <div class="fila">
+      <label>Teléfono</label>
+      <input name="telefono" type="text" [(ngModel)]="telefono" />
+    </div>
+    <div class="fila">
+      <label>Email</label>
+      <input name="email" type="email" [(ngModel)]="email" />
+    </div>
+
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
+
+    <button type="submit" [disabled]="form.invalid || guardando()">
+      {{ guardando() ? 'Guardando...' : 'Guardar paciente' }}
+    </button>
+  </form>
+}
+
+@if (cargando()) {
+  <p>Cargando...</p>
+} @else if (pacientes().length === 0) {
+  <p>No hay pacientes cargados todavía.</p>
+} @else {
+  <table class="tabla-pacientes">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>DNI</th>
+        <th>Teléfono</th>
+        <th>Email</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (p of pacientes(); track p.id) {
+        <tr>
+          <td>{{ p.nombre }}</td>
+          <td>{{ p.dni || '-' }}</td>
+          <td>{{ p.telefono || '-' }}</td>
+          <td>{{ p.email || '-' }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}
