@@ -1,0 +1,56 @@
+<div class="header">
+  <h1>Tipos de tratamiento</h1>
+  <button (click)="mostrarForm.set(!mostrarForm())">
+    {{ mostrarForm() ? 'Cancelar' : '+ Nuevo tipo' }}
+  </button>
+</div>
+
+@if (mostrarForm()) {
+  <form class="form-tratamiento" (ngSubmit)="crear()" #form="ngForm">
+    <div class="fila">
+      <label>Nombre*</label>
+      <input name="nombre" type="text" [(ngModel)]="nombre" required placeholder="Ej: Limpieza" />
+    </div>
+    <div class="fila">
+      <label>Duración (minutos)*</label>
+      <input name="duracion" type="number" min="5" step="5" [(ngModel)]="duracionMinutos" required />
+    </div>
+    <div class="fila">
+      <label>Precio base</label>
+      <input name="precio" type="number" min="0" step="100" [(ngModel)]="precioBase" />
+    </div>
+
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
+
+    <button type="submit" [disabled]="form.invalid || guardando()">
+      {{ guardando() ? 'Guardando...' : 'Guardar' }}
+    </button>
+  </form>
+}
+
+@if (cargando()) {
+  <p>Cargando...</p>
+} @else if (tratamientos().length === 0) {
+  <p>No hay tipos de tratamiento cargados todavía.</p>
+} @else {
+  <table class="tabla">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Duración</th>
+        <th>Precio base</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (t of tratamientos(); track t.id) {
+        <tr>
+          <td>{{ t.nombre }}</td>
+          <td>{{ t.duracionMinutos }} min</td>
+          <td>{{ t.precioBase | number: '1.0-2' }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

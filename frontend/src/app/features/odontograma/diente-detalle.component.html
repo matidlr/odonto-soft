@@ -1,0 +1,146 @@
+<a class="volver" [routerLink]="['/pacientes', pacienteId, 'odontograma']">← Volver al odontograma</a>
+
+<h1>Pieza {{ numeroFdi }}</h1>
+
+@if (cargando()) {
+  <p>Cargando...</p>
+} @else {
+  <div class="contenedor">
+    <form class="form-evento" (ngSubmit)="registrarEvento()" #form="ngForm">
+      <h2>Registrar evento</h2>
+
+      <div class="fila-form">
+        <label>Nuevo estado*</label>
+        <select name="estado" [(ngModel)]="nuevoEstado" required>
+          @for (e of estados; track e) {
+            <option [value]="e">{{ e }}</option>
+          }
+        </select>
+      </div>
+      <div class="fila-form">
+        <label>¿Ya se realizó?*</label>
+        <select name="estadoTratamiento" [(ngModel)]="nuevoEstadoTratamiento" required>
+          <option value="Realizado">Realizado</option>
+          <option value="Planificado">Planificado (a realizar)</option>
+        </select>
+      </div>
+      <div class="fila-form">
+        <label>Tratamiento</label>
+        <input name="tratamiento" type="text" [(ngModel)]="nuevoTratamiento" placeholder="Ej: Obturación con resina" />
+      </div>
+      <div class="fila-form">
+        <label>Nota</label>
+        <input name="nota" type="text" [(ngModel)]="nuevaNota" />
+      </div>
+      <div class="fila-form">
+        <label>Odontólogo</label>
+        <select name="odontologo" [(ngModel)]="nuevoOdontologoId">
+          <option value="">(sin especificar)</option>
+          @for (o of odontologos(); track o.id) {
+            <option [value]="o.id">{{ o.nombre }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="fila-form">
+        <label>¿Fue en un turno reservado por el sistema?</label>
+        <select name="turno" [(ngModel)]="turnoSeleccionado">
+          <option value="">No — voy a poner la fecha a mano</option>
+          @for (t of turnosPaciente(); track t.id) {
+            <option [value]="t.id">{{ t.fechaHora | date: 'short' }} · {{ t.estado }}</option>
+          }
+        </select>
+      </div>
+
+      @if (!turnoSeleccionado) {
+        <div class="fila-form">
+          <label>Fecha*</label>
+          <input name="fechaManual" type="date" [(ngModel)]="fechaManual" required />
+        </div>
+      }
+
+      @if (error()) {
+        <p class="error">{{ error() }}</p>
+      }
+
+      <button type="submit" [disabled]="form.invalid || guardando()">
+        {{ guardando() ? 'Guardando...' : 'Registrar' }}
+      </button>
+    </form>
+
+    <div class="historial-container">
+      <h2>Historial</h2>
+
+      @if (historial().length === 0) {
+        <p>Sin eventos registrados para esta pieza todavía.</p>
+      } @else {
+        <ul class="historial">
+          @for (ev of historial(); track ev.id) {
+            <li>
+              <strong>{{ ev.estado }}</strong>
+              <span class="chip" [class.chip-realizado]="ev.estadoTratamiento === 'Realizado'" [class.chip-planificado]="ev.estadoTratamiento === 'Planificado'">
+                {{ ev.estadoTratamiento }}
+              </span>
+              <div class="fecha">
+                {{ ev.fecha | date: 'medium' }}
+                @if (ev.turnoId) { <span class="tag-turno">turno reservado</span> }
+              </div>
+              @if (ev.tratamiento) { <div>{{ ev.tratamiento }}</div> }
+              @if (ev.nota) { <div class="nota">{{ ev.nota }}</div> }
+
+              <div class="adjuntos">
+                @for (a of ev.archivos; track a.id) {
+                  @if (esImagen(a) && miniaturas().get(a.id)) {
+                    <button type="button" class="miniatura" (click)="abrirVisor(a)" [title]="a.nombreOriginal">
+                      <img [src]="miniaturas().get(a.id)" [alt]="a.nombreOriginal" />
+                    </button>
+                  } @else {
+                    <button type="button" class="link-archivo" (click)="abrirVisor(a)">
+                      📎 {{ a.nombreOriginal }}
+                    </button>
+                  }
+                }
+
+                <label class="label-adjuntar">
+                  {{ subiendoArchivoDe() === ev.id ? 'Subiendo...' : '+ Adjuntar archivo' }}
+                  <input
+                    type="file"
+                    hidden
+                    [disabled]="subiendoArchivoDe() === ev.id"
+                    #inputArchivo
+                    (change)="adjuntarArchivo(ev, inputArchivo)"
+                  />
+                </label>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  </div>
+}
+
+@if (archivoAbierto(); as abierto) {
+  <div class="overlay-visor" (click)="cerrarVisor()">
+    <div class="visor" (click)="$event.stopPropagation()">
+      <div class="visor-header">
+        <span>{{ abierto.nombre }}</span>
+        <button type="button" class="cerrar" (click)="cerrarVisor()">✕</button>
+      </div>
+
+      <div class="visor-contenido">
+        @if (abierto.contentType.startsWith('image/')) {
+          <img [src]="abierto.url" [alt]="abierto.nombre" />
+        } @else if (abierto.contentType === 'application/pdf') {
+          <iframe [src]="urlSegura(abierto.url)" title="Vista previa"></iframe>
+        } @else {
+          <p>No se puede previsualizar este tipo de archivo.</p>
+        }
+      </div>
+
+      <div class="visor-footer">
+        <button type="button" (click)="descargarDesdeVisor()">Descargar</button>
+      </div>
+    </div>
+  </div>
+}

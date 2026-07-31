@@ -1,0 +1,119 @@
+<div class="header">
+  <h1>Disponibilidad</h1>
+  @if (odontologoSeleccionado) {
+    <button (click)="mostrarForm.set(!mostrarForm())">
+      {{ mostrarForm() ? 'Cancelar' : '+ Nueva regla' }}
+    </button>
+  }
+</div>
+
+@if (odontologos().length === 0) {
+  <p>No hay odontólogos cargados todavía.</p>
+} @else {
+  <div class="selector-odontologo">
+    <label>Odontólogo</label>
+    <select [(ngModel)]="odontologoSeleccionado" (ngModelChange)="cargarReglas()">
+      @for (o of odontologos(); track o.id) {
+        <option [value]="o.id">{{ o.nombre }}</option>
+      }
+    </select>
+  </div>
+
+  @if (mostrarForm()) {
+    <form class="form-regla" (ngSubmit)="crear()" #form="ngForm">
+      <div class="fila">
+        <label>Tipo*</label>
+        <select name="tipo" [(ngModel)]="tipo" required>
+          <option value="Recurrente">Recurrente (todas las semanas)</option>
+          <option value="Excepcion">Excepción (una fecha puntual)</option>
+        </select>
+      </div>
+
+      @if (tipo === 'Recurrente') {
+        <div class="fila">
+          <label>Día de la semana*</label>
+          <select name="diaSemana" [(ngModel)]="diaSemana" required>
+            @for (d of dias; track d) {
+              <option [value]="d">{{ d }}</option>
+            }
+          </select>
+        </div>
+      } @else {
+        <div class="fila">
+          <label>Fecha*</label>
+          <input name="fecha" type="date" [(ngModel)]="fecha" required />
+        </div>
+      }
+
+      <div class="fila fila-checkbox">
+        <label>
+          <input type="checkbox" name="todoElDia" [(ngModel)]="todoElDia" />
+          Todo el día
+        </label>
+      </div>
+
+      @if (!todoElDia) {
+        <div class="fila fila-horas">
+          <div>
+            <label>Desde*</label>
+            <input name="horaInicio" type="time" [(ngModel)]="horaInicio" required />
+          </div>
+          <div>
+            <label>Hasta*</label>
+            <input name="horaFin" type="time" [(ngModel)]="horaFin" required />
+          </div>
+        </div>
+      }
+
+      <div class="fila fila-checkbox">
+        <label>
+          <input type="checkbox" name="bloqueado" [(ngModel)]="bloqueado" />
+          Bloquear ese horario (en vez de abrirlo)
+        </label>
+      </div>
+
+      @if (error()) {
+        <p class="error">{{ error() }}</p>
+      }
+
+      <button type="submit" [disabled]="form.invalid || guardando()">
+        {{ guardando() ? 'Guardando...' : 'Guardar regla' }}
+      </button>
+    </form>
+  }
+
+  @if (cargando()) {
+    <p>Cargando...</p>
+  } @else if (reglas().length === 0) {
+    <p>No hay reglas de disponibilidad para este odontólogo todavía.</p>
+  } @else {
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>Tipo</th>
+          <th>Cuándo</th>
+          <th>Horario</th>
+          <th>Efecto</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of reglas(); track r.id) {
+          <tr>
+            <td>{{ r.tipo }}</td>
+            <td>{{ r.tipo === 'Recurrente' ? r.diaSemana : r.fecha }}</td>
+            <td>{{ r.todoElDia ? 'Todo el día' : (r.horaInicio + ' - ' + r.horaFin) }}</td>
+            <td>
+              <span [class]="r.bloqueado ? 'tag-bloqueado' : 'tag-abierto'">
+                {{ r.bloqueado ? 'Bloquea' : 'Abre' }}
+              </span>
+            </td>
+            <td>
+              <button class="btn-eliminar" (click)="eliminar(r.id)">Eliminar</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+}

@@ -23,6 +23,10 @@
       <label>Email</label>
       <input name="email" type="email" [(ngModel)]="email" />
     </div>
+    <div class="fila">
+      <label>Fecha de nacimiento</label>
+      <input name="fechaNacimiento" type="date" [(ngModel)]="fechaNacimiento" />
+    </div>
 
     @if (error()) {
       <p class="error">{{ error() }}</p>
@@ -46,6 +50,7 @@
         <th>DNI</th>
         <th>Teléfono</th>
         <th>Email</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
@@ -55,6 +60,7 @@
           <td>{{ p.dni || '-' }}</td>
           <td>{{ p.telefono || '-' }}</td>
           <td>{{ p.email || '-' }}</td>
+          <td><a [routerLink]="['/pacientes', p.id, 'odontograma']">Odontograma</a></td>
         </tr>
       }
     </tbody>

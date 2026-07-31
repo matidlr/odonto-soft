@@ -28,7 +28,7 @@ public class PacientesController : ControllerBase
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {
         var pacientes = await _db.Pacientes
-            .Select(p => new { p.Id, p.Nombre, p.Dni, p.Telefono, p.Email })
+            .Select(p => new { p.Id, p.Nombre, p.Dni, p.Telefono, p.Email, p.FechaNacimiento })
             .ToListAsync(ct);
 
         return Ok(pacientes);

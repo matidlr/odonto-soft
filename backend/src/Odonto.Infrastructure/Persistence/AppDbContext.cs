@@ -22,6 +22,8 @@ public class AppDbContext : DbContext
     public DbSet<TipoTratamiento> TiposTratamiento => Set<TipoTratamiento>();
     public DbSet<Turno> Turnos => Set<Turno>();
     public DbSet<Notificacion> Notificaciones => Set<Notificacion>();
+    public DbSet<EventoOdontograma> EventosOdontograma => Set<EventoOdontograma>();
+    public DbSet<ArchivoOdontograma> ArchivosOdontograma => Set<ArchivoOdontograma>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -101,6 +103,26 @@ public class AppDbContext : DbContext
         {
             b.HasOne(n => n.Turno).WithMany().HasForeignKey(n => n.TurnoId).OnDelete(DeleteBehavior.Cascade);
             b.HasIndex(n => new { n.Enviado, n.FechaEnvioProgramada });
+        });
+
+        modelBuilder.Entity<EventoOdontograma>(b =>
+        {
+            b.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne(e => e.Paciente).WithMany().HasForeignKey(e => e.PacienteId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(e => e.Odontologo).WithMany().HasForeignKey(e => e.OdontologoId).OnDelete(DeleteBehavior.SetNull);
+            b.HasOne(e => e.Turno).WithMany().HasForeignKey(e => e.TurnoId).OnDelete(DeleteBehavior.SetNull);
+
+            b.HasIndex(e => new { e.PacienteId, e.NumeroFdi, e.Fecha });
+
+            b.HasQueryFilter(e => _tenantContext.EsSuperAdmin || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<ArchivoOdontograma>(b =>
+        {
+            b.HasOne(a => a.Tenant).WithMany().HasForeignKey(a => a.TenantId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne(a => a.EventoOdontograma).WithMany().HasForeignKey(a => a.EventoOdontogramaId).OnDelete(DeleteBehavior.Cascade);
+
+            b.HasQueryFilter(a => _tenantContext.EsSuperAdmin || a.TenantId == _tenantContext.TenantId);
         });
     }
 }

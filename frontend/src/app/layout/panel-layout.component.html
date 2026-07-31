@@ -6,6 +6,8 @@
       <a routerLink="/inicio" routerLinkActive="activo">Inicio</a>
       <a routerLink="/agenda" routerLinkActive="activo">Agenda</a>
       <a routerLink="/pacientes" routerLinkActive="activo">Pacientes</a>
+      <a routerLink="/tratamientos" routerLinkActive="activo">Tratamientos</a>
+      <a routerLink="/disponibilidad" routerLinkActive="activo">Disponibilidad</a>
       @if (auth.sesion()?.rol === 'SuperAdmin') {
         <a routerLink="/admin/tenants" routerLinkActive="activo">Tenants</a>
       }

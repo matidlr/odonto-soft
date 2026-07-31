@@ -1,0 +1,72 @@
+<h1>Odontograma @if (paciente()) { — {{ paciente()!.nombre }} }</h1>
+
+@if (cargando()) {
+  <p>Cargando...</p>
+} @else {
+  <div class="referencias">
+    @for (e of estados; track e) {
+      <span class="referencia">
+        <span class="punto" [style.background]="colorDeEstado(e)"></span>
+        {{ e }}
+      </span>
+    }
+    <span class="referencia"><span class="raya raya-roja"></span> Realizado</span>
+    <span class="referencia"><span class="raya raya-azul"></span> Planificado</span>
+  </div>
+
+  <div class="odontograma">
+    <p class="titulo-seccion">Permanentes</p>
+    <div class="fila">
+      @for (n of filaSuperior; track n) {
+        <a
+          class="diente"
+          [routerLink]="['/pacientes', pacienteId, 'odontograma', n]"
+          [style.background]="colorDe(n)"
+          [style.borderColor]="bordeDe(n)"
+        >
+          {{ n }}
+        </a>
+      }
+    </div>
+    <div class="fila">
+      @for (n of filaInferior; track n) {
+        <a
+          class="diente"
+          [routerLink]="['/pacientes', pacienteId, 'odontograma', n]"
+          [style.background]="colorDe(n)"
+          [style.borderColor]="bordeDe(n)"
+        >
+          {{ n }}
+        </a>
+      }
+    </div>
+
+    @if (mostrarTemporales()) {
+      <p class="titulo-seccion">Temporales (dientes de leche)</p>
+      <div class="fila">
+        @for (n of filaSuperiorTemporal; track n) {
+          <a
+            class="diente diente-chico"
+            [routerLink]="['/pacientes', pacienteId, 'odontograma', n]"
+            [style.background]="colorDe(n)"
+            [style.borderColor]="bordeDe(n)"
+          >
+            {{ n }}
+          </a>
+        }
+      </div>
+      <div class="fila">
+        @for (n of filaInferiorTemporal; track n) {
+          <a
+            class="diente diente-chico"
+            [routerLink]="['/pacientes', pacienteId, 'odontograma', n]"
+            [style.background]="colorDe(n)"
+            [style.borderColor]="bordeDe(n)"
+          >
+            {{ n }}
+          </a>
+        }
+      </div>
+    }
+  </div>
+}

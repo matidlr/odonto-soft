@@ -9,6 +9,7 @@ export interface Paciente {
   dni: string | null;
   telefono: string | null;
   email: string | null;
+  fechaNacimiento: string | null;
 }
 
 export interface CrearPacienteRequest {

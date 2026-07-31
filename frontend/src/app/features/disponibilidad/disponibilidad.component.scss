@@ -1,0 +1,146 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+
+  h1 {
+    margin: 0;
+  }
+
+  button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    background: #2563eb;
+    color: white;
+    cursor: pointer;
+  }
+}
+
+.selector-odontologo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+
+  label {
+    font-size: 0.85rem;
+    color: #555;
+  }
+
+  select {
+    padding: 0.4rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+}
+
+.form-regla {
+  background: white;
+  padding: 1.25rem;
+  border-radius: 8px;
+  max-width: 420px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+
+  .fila {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0.75rem;
+
+    label {
+      font-size: 0.8rem;
+      color: #555;
+      margin-bottom: 0.25rem;
+    }
+
+    select,
+    input[type='date'],
+    input[type='time'] {
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+  }
+
+  .fila-checkbox label {
+    flex-direction: row;
+    align-items: center;
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #333;
+  }
+
+  .fila-horas {
+    flex-direction: row;
+    gap: 1rem;
+
+    > div {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+  }
+
+  button[type='submit'] {
+    padding: 0.6rem 1rem;
+    border: none;
+    border-radius: 6px;
+    background: #16803c;
+    color: white;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.6;
+    }
+  }
+
+  .error {
+    color: #d02828;
+    font-size: 0.85rem;
+  }
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+
+  th,
+  td {
+    text-align: left;
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid #eee;
+  }
+
+  th {
+    background: #f1f5f9;
+    font-size: 0.8rem;
+    color: #555;
+  }
+}
+
+.tag-bloqueado {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.tag-abierto {
+  color: #16803c;
+  font-weight: 600;
+}
+
+.btn-eliminar {
+  padding: 0.3rem 0.6rem;
+  border: none;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #b91c1c;
+  cursor: pointer;
+  font-size: 0.8rem;
+}

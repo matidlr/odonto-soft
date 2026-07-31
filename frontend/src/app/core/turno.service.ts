@@ -27,11 +27,12 @@ export interface ReservarTurnoManualRequest {
 export class TurnoService {
   constructor(private http: HttpClient) {}
 
-  getAll(desde?: Date, hasta?: Date, odontologoId?: string): Promise<Turno[]> {
+  getAll(desde?: Date, hasta?: Date, odontologoId?: string, pacienteId?: string): Promise<Turno[]> {
     const params: Record<string, string> = {};
     if (desde) params['desde'] = desde.toISOString();
     if (hasta) params['hasta'] = hasta.toISOString();
     if (odontologoId) params['odontologoId'] = odontologoId;
+    if (pacienteId) params['pacienteId'] = pacienteId;
 
     return firstValueFrom(this.http.get<Turno[]>(`${API_BASE_URL}/turnos`, { params }));
   }

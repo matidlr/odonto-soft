@@ -16,3 +16,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Archivos subidos por usuarios (radiografías, fotos de pacientes).
+# Nunca deben ir al repo público, ni locales ni de ningún ambiente.
+backend/uploads/
+**/uploads/

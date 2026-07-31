@@ -1,11 +1,12 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { Paciente, PacienteService } from '../../core/paciente.service';
 
 @Component({
   selector: 'app-pacientes',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   templateUrl: './pacientes.component.html',
   styleUrl: './pacientes.component.scss'
 })
@@ -20,6 +21,7 @@ export class PacientesComponent implements OnInit {
   dni = '';
   telefono = '';
   email = '';
+  fechaNacimiento = '';
 
   constructor(private pacienteService: PacienteService) {}
 
@@ -44,13 +46,18 @@ export class PacientesComponent implements OnInit {
         nombre: this.nombre,
         dni: this.dni || undefined,
         telefono: this.telefono || undefined,
-        email: this.email || undefined
+        email: this.email || undefined,
+        fechaNacimiento: this.fechaNacimiento || undefined
       });
-      this.nombre = this.dni = this.telefono = this.email = '';
+      this.nombre = this.dni = this.telefono = this.email = this.fechaNacimiento = '';
       this.mostrarForm.set(false);
       await this.cargar();
-    } catch {
-      this.error.set('No se pudo crear el paciente.');
+    } catch (err: unknown) {
+      console.error('Error al crear paciente:', err);
+      const httpError = err as { status?: number; error?: { message?: string }; message?: string };
+      this.error.set(
+        `No se pudo crear el paciente. (status ${httpError?.status ?? '?'}: ${httpError?.error?.message ?? httpError?.message ?? 'sin detalle'})`
+      );
     } finally {
       this.guardando.set(false);
     }

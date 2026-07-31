@@ -29,12 +29,14 @@ public class TurnosController : ControllerBase
         [FromQuery] DateTime? desde,
         [FromQuery] DateTime? hasta,
         [FromQuery] Guid? odontologoId,
+        [FromQuery] Guid? pacienteId,
         CancellationToken ct)
     {
         var query = _db.Turnos.AsQueryable();
         if (desde is DateTime d1) query = query.Where(t => t.FechaHora >= d1);
         if (hasta is DateTime d2) query = query.Where(t => t.FechaHora <= d2);
         if (odontologoId is Guid oid) query = query.Where(t => t.OdontologoId == oid);
+        if (pacienteId is Guid pid) query = query.Where(t => t.PacienteId == pid);
 
         var turnos = await query
             .OrderBy(t => t.FechaHora)

@@ -24,6 +24,34 @@ export const routes: Routes = [
           import('./features/pacientes/pacientes.component').then((m) => m.PacientesComponent)
       },
       {
+        path: 'pacientes/:pacienteId/odontograma',
+        loadComponent: () =>
+          import('./features/odontograma/odontograma.component').then(
+            (m) => m.OdontogramaComponent
+          )
+      },
+      {
+        path: 'pacientes/:pacienteId/odontograma/:numeroFdi',
+        loadComponent: () =>
+          import('./features/odontograma/diente-detalle.component').then(
+            (m) => m.DienteDetalleComponent
+          )
+      },
+      {
+        path: 'tratamientos',
+        loadComponent: () =>
+          import('./features/tratamientos/tratamientos.component').then(
+            (m) => m.TratamientosComponent
+          )
+      },
+      {
+        path: 'disponibilidad',
+        loadComponent: () =>
+          import('./features/disponibilidad/disponibilidad.component').then(
+            (m) => m.DisponibilidadComponent
+          )
+      },
+      {
         path: 'admin/tenants',
         loadComponent: () =>
           import('./features/admin/tenants.component').then((m) => m.AdminTenantsComponent)
