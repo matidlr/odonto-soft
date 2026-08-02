@@ -1,0 +1,140 @@
+<a class="volver" [routerLink]="['/pacientes']">← Volver a pacientes</a>
+
+<div class="header">
+  <h1>Presupuestos{{ paciente() ? ' — ' + paciente()!.nombre : '' }}</h1>
+  <button type="button" (click)="mostrarForm() ? cancelar() : abrirNuevo()">
+    {{ mostrarForm() ? 'Cancelar' : '+ Nuevo presupuesto' }}
+  </button>
+</div>
+
+@if (cargando()) {
+  <p>Cargando...</p>
+} @else {
+  @if (mostrarForm()) {
+    <form class="form-presupuesto" (ngSubmit)="guardar()">
+      <div class="fila-form">
+        <label>Odontólogo</label>
+        <select name="odontologo" [(ngModel)]="odontologoId">
+          <option value="">(sin especificar)</option>
+          @for (o of odontologos(); track o.id) {
+            <option [value]="o.id">{{ o.nombre }}</option>
+          }
+        </select>
+      </div>
+      <div class="fila-form">
+        <label>Observaciones</label>
+        <textarea name="observaciones" [(ngModel)]="observaciones" rows="2"></textarea>
+      </div>
+
+      <h3>Ítems</h3>
+      <table class="tabla-items">
+        <thead>
+          <tr>
+            <th>Tratamiento (catálogo)</th>
+            <th>Descripción*</th>
+            <th>Diente</th>
+            <th>Estado resultante</th>
+            <th>Cant.</th>
+            <th>Precio unit.</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (fila of filas(); track $index) {
+            <tr>
+              <td>
+                <select [(ngModel)]="fila.tipoTratamientoId" [ngModelOptions]="{ standalone: true }" (ngModelChange)="onCambioTipoTratamiento($index)">
+                  <option value="">(ninguno)</option>
+                  @for (t of tiposTratamiento(); track t.id) {
+                    <option [value]="t.id">{{ t.nombre }}</option>
+                  }
+                </select>
+              </td>
+              <td><input type="text" [(ngModel)]="fila.descripcion" [ngModelOptions]="{ standalone: true }" /></td>
+              <td><input type="number" min="11" max="85" [(ngModel)]="fila.numeroFdi" [ngModelOptions]="{ standalone: true }" placeholder="Opcional" /></td>
+              <td>
+                <select [(ngModel)]="fila.estadoDienteResultante" [ngModelOptions]="{ standalone: true }" [disabled]="!fila.numeroFdi">
+                  <option value="">(ninguno)</option>
+                  @for (e of estadosDiente; track e) {
+                    <option [value]="e">{{ e }}</option>
+                  }
+                </select>
+              </td>
+              <td><input type="number" min="1" [(ngModel)]="fila.cantidad" [ngModelOptions]="{ standalone: true }" class="chico" /></td>
+              <td><input type="number" min="0" step="0.01" [(ngModel)]="fila.precioUnitario" [ngModelOptions]="{ standalone: true }" class="chico" /></td>
+              <td><button type="button" class="btn-quitar" (click)="quitarFila($index)">✕</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <button type="button" class="btn-agregar-fila" (click)="agregarFila()">+ Agregar ítem</button>
+
+      <p class="total">Total: {{ totalFilas() | currency: 'ARS' : 'symbol-narrow' : '1.0-2' }}</p>
+
+      @if (error()) {
+        <p class="error">{{ error() }}</p>
+      }
+
+      <button type="submit" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando...' : 'Guardar presupuesto' }}
+      </button>
+    </form>
+  }
+
+  @if (presupuestos().length === 0) {
+    <p>Sin presupuestos cargados todavía.</p>
+  } @else {
+    <div class="lista-presupuestos">
+      @for (p of presupuestos(); track p.id) {
+        <div class="tarjeta-presupuesto">
+          <div class="cabecera">
+            <span class="fecha">{{ p.fechaCreacion | date: 'medium' }}</span>
+            <span class="tag-estado" [class]="'estado-' + p.estado.toLowerCase()">{{ p.estado }}</span>
+            @if (p.convertido) { <span class="tag-convertido">Convertido en tratamiento</span> }
+          </div>
+          @if (p.odontologoId) { <p class="odontologo">Odontólogo: {{ nombreOdontologo(p.odontologoId) }}</p> }
+          @if (p.observaciones) { <p class="observaciones">{{ p.observaciones }}</p> }
+
+          <table class="tabla-items-detalle">
+            <thead>
+              <tr>
+                <th>Descripción</th>
+                <th>Diente</th>
+                <th>Cant.</th>
+                <th>Precio unit.</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of p.items; track item.id) {
+                <tr>
+                  <td>{{ item.descripcion }}</td>
+                  <td>{{ item.numeroFdi ?? '-' }}{{ item.estadoDienteResultante ? ' → ' + item.estadoDienteResultante : '' }}</td>
+                  <td>{{ item.cantidad }}</td>
+                  <td>{{ item.precioUnitario | currency: 'ARS' : 'symbol-narrow' : '1.0-2' }}</td>
+                  <td>{{ item.subtotal | currency: 'ARS' : 'symbol-narrow' : '1.0-2' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+
+          <p class="total">Total: {{ p.montoTotal | currency: 'ARS' : 'symbol-narrow' : '1.0-2' }}</p>
+
+          <div class="acciones">
+            @if (p.estado === 'Pendiente') {
+              <button type="button" class="btn-aprobar" [disabled]="procesandoId() === p.id" (click)="aprobar(p)">Aprobar</button>
+              <button type="button" class="btn-rechazar" [disabled]="procesandoId() === p.id" (click)="rechazar(p)">Rechazar</button>
+              <button type="button" class="btn-borrar" [disabled]="procesandoId() === p.id" (click)="borrar(p)">Borrar</button>
+            }
+            @if (p.estado === 'Aprobado' && !p.convertido) {
+              <button type="button" class="btn-convertir" [disabled]="procesandoId() === p.id" (click)="convertir(p)">
+                Convertir en tratamiento
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+}

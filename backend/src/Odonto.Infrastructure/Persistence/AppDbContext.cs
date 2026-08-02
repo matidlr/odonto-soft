@@ -29,6 +29,8 @@ public class AppDbContext : DbContext
     public DbSet<NotaEvolucion> NotasEvolucion => Set<NotaEvolucion>();
     public DbSet<Plan> Planes => Set<Plan>();
     public DbSet<ArchivoPaciente> ArchivosPaciente => Set<ArchivoPaciente>();
+    public DbSet<Presupuesto> Presupuestos => Set<Presupuesto>();
+    public DbSet<ItemPresupuesto> ItemsPresupuesto => Set<ItemPresupuesto>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -179,6 +181,28 @@ public class AppDbContext : DbContext
             b.HasIndex(a => new { a.PacienteId, a.Categoria });
 
             b.HasQueryFilter(a => _tenantContext.EsSuperAdmin || a.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<Presupuesto>(b =>
+        {
+            b.HasOne(p => p.Tenant).WithMany().HasForeignKey(p => p.TenantId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne(p => p.Paciente).WithMany().HasForeignKey(p => p.PacienteId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(p => p.Odontologo).WithMany().HasForeignKey(p => p.OdontologoId).OnDelete(DeleteBehavior.SetNull);
+
+            b.HasIndex(p => new { p.PacienteId, p.FechaCreacion });
+
+            b.HasQueryFilter(p => _tenantContext.EsSuperAdmin || p.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<ItemPresupuesto>(b =>
+        {
+            b.Property(i => i.PrecioUnitario).HasColumnType("decimal(10,2)");
+
+            b.HasOne(i => i.Presupuesto).WithMany(p => p.Items).HasForeignKey(i => i.PresupuestoId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(i => i.TipoTratamiento).WithMany().HasForeignKey(i => i.TipoTratamientoId).OnDelete(DeleteBehavior.SetNull);
+
+            // Sin HasQueryFilter propio: siempre se accede a través del
+            // Presupuesto dueño (que sí filtra por tenant), no directo.
         });
     }
 }

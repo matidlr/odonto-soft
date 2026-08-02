@@ -73,6 +73,7 @@
         <th></th>
         <th></th>
         <th></th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
@@ -85,6 +86,7 @@
           <td><a [routerLink]="['/pacientes', p.id, 'odontograma']">Odontograma</a></td>
           <td><a [routerLink]="['/pacientes', p.id, 'historial-clinico']">Historia clínica</a></td>
           <td><a [routerLink]="['/pacientes', p.id, 'archivos']">Archivos</a></td>
+          <td><a [routerLink]="['/pacientes', p.id, 'presupuestos']">Presupuestos</a></td>
           <td><button type="button" class="btn-editar" (click)="editar(p)">Editar</button></td>
         </tr>
       }
