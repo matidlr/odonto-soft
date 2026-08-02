@@ -31,6 +31,7 @@ public class AppDbContext : DbContext
     public DbSet<ArchivoPaciente> ArchivosPaciente => Set<ArchivoPaciente>();
     public DbSet<Presupuesto> Presupuestos => Set<Presupuesto>();
     public DbSet<ItemPresupuesto> ItemsPresupuesto => Set<ItemPresupuesto>();
+    public DbSet<Cobro> Cobros => Set<Cobro>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -203,6 +204,20 @@ public class AppDbContext : DbContext
 
             // Sin HasQueryFilter propio: siempre se accede a través del
             // Presupuesto dueño (que sí filtra por tenant), no directo.
+        });
+
+        modelBuilder.Entity<Cobro>(b =>
+        {
+            b.Property(c => c.Monto).HasColumnType("decimal(10,2)");
+
+            b.HasOne(c => c.Tenant).WithMany().HasForeignKey(c => c.TenantId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne(c => c.Paciente).WithMany().HasForeignKey(c => c.PacienteId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(c => c.Presupuesto).WithMany().HasForeignKey(c => c.PresupuestoId).OnDelete(DeleteBehavior.SetNull);
+            b.HasOne(c => c.Odontologo).WithMany().HasForeignKey(c => c.OdontologoId).OnDelete(DeleteBehavior.SetNull);
+
+            b.HasIndex(c => new { c.PacienteId, c.Fecha });
+
+            b.HasQueryFilter(c => _tenantContext.EsSuperAdmin || c.TenantId == _tenantContext.TenantId);
         });
     }
 }

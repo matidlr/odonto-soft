@@ -1,0 +1,30 @@
+<h1>Pagos pendientes</h1>
+
+@if (cargando()) {
+  <p>Cargando...</p>
+} @else if (pendientes().length === 0) {
+  <p>No hay pacientes con saldo pendiente. 🎉</p>
+} @else {
+  <table class="tabla-pendientes">
+    <thead>
+      <tr>
+        <th>Paciente</th>
+        <th>Presupuestado</th>
+        <th>Cobrado</th>
+        <th>Saldo</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (p of pendientes(); track p.pacienteId) {
+        <tr>
+          <td>{{ p.pacienteNombre }}</td>
+          <td>{{ p.totalAprobado | currency: 'ARS' : 'symbol-narrow' : '1.0-2' }}</td>
+          <td>{{ p.totalCobrado | currency: 'ARS' : 'symbol-narrow' : '1.0-2' }}</td>
+          <td class="saldo">{{ p.saldo | currency: 'ARS' : 'symbol-narrow' : '1.0-2' }}</td>
+          <td><a [routerLink]="['/pacientes', p.pacienteId, 'cobros']">Ver / cobrar</a></td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

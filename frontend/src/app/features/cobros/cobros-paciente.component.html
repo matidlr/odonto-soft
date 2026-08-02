@@ -1,0 +1,109 @@
+<a class="volver" [routerLink]="['/pacientes']">← Volver a pacientes</a>
+
+<div class="header">
+  <h1>Cobros{{ paciente() ? ' — ' + paciente()!.nombre : '' }}</h1>
+  <button type="button" (click)="mostrarForm() ? cancelar() : abrirNuevo()">
+    {{ mostrarForm() ? 'Cancelar' : '+ Registrar cobro' }}
+  </button>
+</div>
+
+@if (cargando()) {
+  <p>Cargando...</p>
+} @else {
+  @if (saldo()) {
+    <div class="tarjeta-saldo" [class]="saldoColor()">
+      <div>
+        <span class="etiqueta">Presupuestado (aprobado)</span>
+        <span class="valor">{{ saldo()!.totalAprobado | currency: 'ARS' : 'symbol-narrow' : '1.0-2' }}</span>
+      </div>
+      <div>
+        <span class="etiqueta">Cobrado</span>
+        <span class="valor">{{ saldo()!.totalCobrado | currency: 'ARS' : 'symbol-narrow' : '1.0-2' }}</span>
+      </div>
+      <div>
+        <span class="etiqueta">Saldo</span>
+        <span class="valor destacado">{{ saldo()!.saldo | currency: 'ARS' : 'symbol-narrow' : '1.0-2' }}</span>
+      </div>
+    </div>
+  }
+
+  @if (mostrarForm()) {
+    <form class="form-cobro" (ngSubmit)="guardar()">
+      <div class="fila-form">
+        <label>Monto*</label>
+        <input type="number" min="0" step="0.01" [(ngModel)]="monto" name="monto" required />
+      </div>
+      <div class="fila-form">
+        <label>Medio de pago*</label>
+        <select name="medioPago" [(ngModel)]="medioPago">
+          @for (m of mediosPago; track m) {
+            <option [value]="m">{{ etiquetaMedio[m] }}</option>
+          }
+        </select>
+      </div>
+      <div class="fila-form">
+        <label>Presupuesto asociado</label>
+        <select name="presupuesto" [(ngModel)]="presupuestoId">
+          <option value="">(pago suelto, sin asociar)</option>
+          @for (p of presupuestosAprobados(); track p.id) {
+            <option [value]="p.id">{{ p.fechaCreacion | date: 'shortDate' }} — {{ p.montoTotal | currency: 'ARS' : 'symbol-narrow' : '1.0-2' }}</option>
+          }
+        </select>
+      </div>
+      <div class="fila-form">
+        <label>Odontólogo</label>
+        <select name="odontologo" [(ngModel)]="odontologoId">
+          <option value="">(sin especificar)</option>
+          @for (o of odontologos(); track o.id) {
+            <option [value]="o.id">{{ o.nombre }}</option>
+          }
+        </select>
+      </div>
+      <div class="fila-form">
+        <label>Concepto</label>
+        <input type="text" [(ngModel)]="concepto" name="concepto" placeholder="Opcional" />
+      </div>
+
+      @if (error()) {
+        <p class="error">{{ error() }}</p>
+      }
+
+      <button type="submit" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando...' : 'Registrar cobro' }}
+      </button>
+    </form>
+  }
+
+  @if (cobros().length === 0) {
+    <p>Sin cobros registrados todavía.</p>
+  } @else {
+    <table class="tabla-cobros">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Monto</th>
+          <th>Medio</th>
+          <th>Concepto</th>
+          <th>Odontólogo</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (c of cobros(); track c.id) {
+          <tr>
+            <td>{{ c.fecha | date: 'short' }}</td>
+            <td>{{ c.monto | currency: 'ARS' : 'symbol-narrow' : '1.0-2' }}</td>
+            <td>{{ etiquetaMedio[c.medioPago] }}</td>
+            <td>{{ c.concepto || '-' }}</td>
+            <td>{{ nombreOdontologo(c.odontologoId) || '-' }}</td>
+            <td>
+              <button type="button" class="btn-borrar" [disabled]="borrandoId() === c.id" (click)="borrar(c)">
+                {{ borrandoId() === c.id ? 'Borrando...' : 'Borrar' }}
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+}

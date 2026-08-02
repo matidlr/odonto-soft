@@ -59,6 +59,20 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'pacientes/:pacienteId/cobros',
+        loadComponent: () =>
+          import('./features/cobros/cobros-paciente.component').then(
+            (m) => m.CobrosPacienteComponent
+          )
+      },
+      {
+        path: 'cobros',
+        loadComponent: () =>
+          import('./features/cobros/cobros-pendientes.component').then(
+            (m) => m.CobrosPendientesComponent
+          )
+      },
+      {
         path: 'tratamientos',
         loadComponent: () =>
           import('./features/tratamientos/tratamientos.component').then(

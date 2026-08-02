@@ -1,0 +1,21 @@
+.tabla-pendientes {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    text-align: left;
+    padding: 0.6rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .saldo {
+    font-weight: 700;
+    color: #dc2626;
+  }
+
+  a {
+    color: #2563eb;
+    text-decoration: none;
+  }
+}

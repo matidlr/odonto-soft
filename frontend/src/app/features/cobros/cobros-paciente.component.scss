@@ -1,0 +1,128 @@
+.volver {
+  display: inline-block;
+  margin-bottom: 1rem;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+
+  button {
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+  }
+}
+
+.tarjeta-saldo {
+  display: flex;
+  gap: 2rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+
+  div {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .etiqueta {
+    font-size: 0.8rem;
+    color: #6b7280;
+  }
+
+  .valor {
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .valor.destacado {
+    font-size: 1.3rem;
+  }
+
+  &.positivo .destacado {
+    color: #dc2626;
+  }
+
+  &.saldado .destacado {
+    color: #16a34a;
+  }
+}
+
+.form-cobro {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+
+  .fila-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+
+    label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #374151;
+    }
+  }
+
+  .error {
+    color: #dc2626;
+    width: 100%;
+  }
+
+  button {
+    height: 38px;
+    padding: 0 1rem;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+
+    &:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.tabla-cobros {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    text-align: left;
+    padding: 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.9rem;
+  }
+
+  .btn-borrar {
+    background: none;
+    border: none;
+    color: #dc2626;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+}
