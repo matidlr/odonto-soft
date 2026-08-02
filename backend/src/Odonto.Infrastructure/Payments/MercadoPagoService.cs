@@ -33,10 +33,9 @@ public class MercadoPagoService
     }
 
     public async Task<(string PreapprovalId, string InitPoint)> CrearSuscripcionAsync(
-        Guid tenantId, string payerEmail, string reason, CancellationToken ct = default)
+        Guid tenantId, string payerEmail, string reason, decimal monto, CancellationToken ct = default)
     {
         var backUrl = _configuration["MercadoPago:BackUrl"] ?? "https://www.mercadopago.com.ar";
-        var monto = decimal.Parse(_configuration["MercadoPago:MontoMensual"] ?? "15000");
         var moneda = _configuration["MercadoPago:Moneda"] ?? "ARS";
 
         var payload = new

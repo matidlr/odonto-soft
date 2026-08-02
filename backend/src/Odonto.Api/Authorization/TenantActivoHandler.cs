@@ -33,12 +33,15 @@ public class TenantActivoHandler : AuthorizationHandler<TenantActivoRequirement>
             return;
         }
 
-        var estado = await _db.Tenants
-            .Where(t => t.Id == tenantId)
-            .Select(t => (TenantEstado?)t.Estado)
-            .FirstOrDefaultAsync();
+        var tenant = await _db.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId);
+        if (tenant is null) return;
 
-        if (estado == TenantEstado.Activo)
+        if (TenantEstadoService.ActualizarSiVencio(tenant))
+        {
+            await _db.SaveChangesAsync();
+        }
+
+        if (tenant.Estado == TenantEstado.Activo)
         {
             context.Succeed(requirement);
         }

@@ -66,6 +66,18 @@ export class AuthService {
     );
   }
 
+  async olvidePassword(email: string): Promise<void> {
+    await firstValueFrom(
+      this.http.post(`${API_BASE_URL}/auth/olvide-password`, { email })
+    );
+  }
+
+  async resetearPassword(token: string, newPassword: string): Promise<void> {
+    await firstValueFrom(
+      this.http.post(`${API_BASE_URL}/auth/resetear-password`, { token, newPassword })
+    );
+  }
+
   logout(): void {
     localStorage.removeItem(STORAGE_KEY);
     this.sesionSignal.set(null);

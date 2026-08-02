@@ -19,6 +19,29 @@
     padding: 0 1.25rem 1.5rem;
   }
 
+  .selector-odontologo {
+    padding: 0 1.25rem 1.25rem;
+
+    label {
+      display: block;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      margin-bottom: 0.3rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    select {
+      width: 100%;
+      padding: 0.45rem;
+      border-radius: 6px;
+      border: 1px solid #475569;
+      background: #334155;
+      color: white;
+      font-size: 0.85rem;
+    }
+  }
+
   nav {
     display: flex;
     flex-direction: column;

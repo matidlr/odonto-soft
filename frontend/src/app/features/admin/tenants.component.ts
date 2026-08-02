@@ -1,16 +1,18 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
-import { TenantResumen, TenantService } from '../../core/tenant.service';
+import { FormsModule } from '@angular/forms';
+import { Plan, TenantResumen, TenantService } from '../../core/tenant.service';
 
 @Component({
   selector: 'app-admin-tenants',
   standalone: true,
-  imports: [DatePipe],
+  imports: [DatePipe, FormsModule],
   templateUrl: './tenants.component.html',
   styleUrl: './tenants.component.scss'
 })
 export class AdminTenantsComponent implements OnInit {
   tenants = signal<TenantResumen[]>([]);
+  planes = signal<Plan[]>([]);
   cargando = signal(true);
   error = signal<string | null>(null);
   procesandoId = signal<string | null>(null);
@@ -18,7 +20,15 @@ export class AdminTenantsComponent implements OnInit {
   constructor(private tenantService: TenantService) {}
 
   async ngOnInit(): Promise<void> {
-    await this.cargar();
+    await Promise.all([this.cargar(), this.cargarPlanes()]);
+  }
+
+  async cargarPlanes(): Promise<void> {
+    try {
+      this.planes.set(await this.tenantService.getPlanes());
+    } catch {
+      // Si falla, el selector de plan queda vacío pero el resto del panel sigue andando.
+    }
   }
 
   async cargar(): Promise<void> {
@@ -30,6 +40,21 @@ export class AdminTenantsComponent implements OnInit {
       this.error.set('No se pudo cargar la lista de tenants (¿sos SuperAdmin?).');
     } finally {
       this.cargando.set(false);
+    }
+  }
+
+  async cambiarPlan(t: TenantResumen, planId: string): Promise<void> {
+    if (!planId || planId === t.planId) return;
+    this.procesandoId.set(t.id);
+    this.error.set(null);
+    try {
+      await this.tenantService.cambiarPlan(t.id, planId);
+      await this.cargar();
+    } catch (err: unknown) {
+      const httpError = err as { error?: { message?: string } };
+      this.error.set(httpError?.error?.message ?? 'No se pudo cambiar el plan.');
+    } finally {
+      this.procesandoId.set(null);
     }
   }
 

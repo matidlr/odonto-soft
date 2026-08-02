@@ -1,56 +1,79 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { Component, OnInit, computed, effect, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { OdontologoContextoService } from '../../core/odontologo-contexto.service';
 import { MiTenant, TenantService } from '../../core/tenant.service';
+import { Turno, TurnoService } from '../../core/turno.service';
+
+function inicioDeHoy(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function finDeHoy(): Date {
+  const d = new Date();
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  template: `
-    <h1>Inicio</h1>
-    <p>Rol: {{ auth.sesion()?.rol }}</p>
-
-    @if (tenant()) {
-      <p>Clínica: {{ tenant()!.nombre }}</p>
-
-      @if (tenant()!.estado === 'PendienteDeActivacion') {
-        <div class="aviso aviso-pendiente">
-          <strong>Tu cuenta está pendiente de activación.</strong>
-          <p>
-            Podés ver la aplicación, pero todavía no vas a poder usar la agenda ni
-            cargar pacientes hasta que actives tu suscripción o el SuperAdmin habilite tu cuenta.
-          </p>
-        </div>
-      } @else if (tenant()!.estado === 'Suspendido') {
-        <div class="aviso aviso-suspendido">
-          <strong>Tu cuenta está suspendida.</strong>
-        </div>
-      } @else {
-        <p class="aviso-ok">Cuenta activa ✓</p>
-      }
-    } @else if (auth.sesion()?.tenantId) {
-      <p>Cargando datos de la clínica...</p>
-    } @else {
-      <p>(SuperAdmin, sin tenant asociado)</p>
-    }
-  `,
-  styles: `
-    .aviso { padding: 1rem; border-radius: 8px; max-width: 480px; }
-    .aviso-pendiente { background: #fff3cd; border: 1px solid #ffe69c; }
-    .aviso-suspendido { background: #f8d7da; border: 1px solid #f1aeb5; }
-    .aviso-ok { color: #16803c; }
-  `
+  imports: [DatePipe, RouterLink],
+  templateUrl: './home.component.html',
+  styleUrl: './home.component.scss'
 })
 export class HomeComponent implements OnInit {
   tenant = signal<MiTenant | null>(null);
+  turnosHoy = signal<Turno[]>([]);
+  pendientesDeConfirmar = signal<Turno[]>([]);
+  cargandoTurnos = signal(false);
+
+  cantidadHoy = computed(() => this.turnosHoy().length);
 
   constructor(
     public auth: AuthService,
-    private tenantService: TenantService
-  ) {}
+    private tenantService: TenantService,
+    private turnoService: TurnoService,
+    public contexto: OdontologoContextoService
+  ) {
+    // Si cambian el odontólogo en el navbar, refrescamos el resumen del día.
+    effect(() => {
+      this.contexto.seleccionadoId();
+      if (this.tenant()?.estado === 'Activo') {
+        this.cargarResumenDelDia();
+      }
+    });
+  }
 
   async ngOnInit(): Promise<void> {
-    if (this.auth.sesion()?.tenantId) {
-      this.tenant.set(await this.tenantService.miTenant());
+    if (!this.auth.sesion()?.tenantId) return;
+
+    this.tenant.set(await this.tenantService.miTenant());
+
+    if (this.tenant()?.estado === 'Activo') {
+      await this.cargarResumenDelDia();
+    }
+  }
+
+  private async cargarResumenDelDia(): Promise<void> {
+    this.cargandoTurnos.set(true);
+    try {
+      const odontologoId = this.contexto.seleccionadoId() ?? undefined;
+      const [hoy, proximos30Dias] = await Promise.all([
+        this.turnoService.getAll(inicioDeHoy(), finDeHoy(), odontologoId),
+        this.turnoService.getAll(
+          inicioDeHoy(),
+          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          odontologoId
+        )
+      ]);
+      this.turnosHoy.set(hoy.filter((t) => t.estado !== 'Cancelado'));
+      this.pendientesDeConfirmar.set(proximos30Dias.filter((t) => t.estado === 'Solicitado'));
+    } finally {
+      this.cargandoTurnos.set(false);
     }
   }
 }

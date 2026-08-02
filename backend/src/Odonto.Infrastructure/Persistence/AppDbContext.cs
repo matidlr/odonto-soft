@@ -24,6 +24,10 @@ public class AppDbContext : DbContext
     public DbSet<Notificacion> Notificaciones => Set<Notificacion>();
     public DbSet<EventoOdontograma> EventosOdontograma => Set<EventoOdontograma>();
     public DbSet<ArchivoOdontograma> ArchivosOdontograma => Set<ArchivoOdontograma>();
+    public DbSet<TokenResetPassword> TokensResetPassword => Set<TokenResetPassword>();
+    public DbSet<FichaMedica> FichasMedicas => Set<FichaMedica>();
+    public DbSet<NotaEvolucion> NotasEvolucion => Set<NotaEvolucion>();
+    public DbSet<Plan> Planes => Set<Plan>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -32,6 +36,15 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Tenant>(b =>
         {
             b.HasIndex(t => t.Slug).IsUnique();
+
+            b.HasOne(t => t.Plan).WithMany().HasForeignKey(t => t.PlanId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Plan>(b =>
+        {
+            b.Property(p => p.PrecioMensual).HasColumnType("decimal(10,2)");
+            // Sin HasQueryFilter: es un catálogo compartido por toda la
+            // plataforma, no un dato de negocio de un tenant en particular.
         });
 
         modelBuilder.Entity<Usuario>(b =>
@@ -51,7 +64,9 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Odontologo>(b =>
         {
             b.HasOne(o => o.Tenant).WithMany().HasForeignKey(o => o.TenantId);
-            b.HasOne(o => o.Usuario).WithMany().HasForeignKey(o => o.UsuarioId);
+            b.HasOne(o => o.Usuario).WithMany().HasForeignKey(o => o.UsuarioId).OnDelete(DeleteBehavior.SetNull);
+
+            b.Property(o => o.Nombre).IsRequired().HasDefaultValue("");
 
             b.HasQueryFilter(o => _tenantContext.EsSuperAdmin || o.TenantId == _tenantContext.TenantId);
         });
@@ -123,6 +138,36 @@ public class AppDbContext : DbContext
             b.HasOne(a => a.EventoOdontograma).WithMany().HasForeignKey(a => a.EventoOdontogramaId).OnDelete(DeleteBehavior.Cascade);
 
             b.HasQueryFilter(a => _tenantContext.EsSuperAdmin || a.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<TokenResetPassword>(b =>
+        {
+            b.HasOne(t => t.Usuario).WithMany().HasForeignKey(t => t.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+            b.HasIndex(t => t.Token).IsUnique();
+            // Sin HasQueryFilter a propósito: es una tabla de sistema, no de
+            // negocio por tenant, y se consulta en endpoints anónimos.
+        });
+
+        modelBuilder.Entity<FichaMedica>(b =>
+        {
+            b.HasOne(f => f.Tenant).WithMany().HasForeignKey(f => f.TenantId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne(f => f.Paciente).WithMany().HasForeignKey(f => f.PacienteId).OnDelete(DeleteBehavior.Cascade);
+
+            b.HasIndex(f => f.PacienteId).IsUnique();
+
+            b.HasQueryFilter(f => _tenantContext.EsSuperAdmin || f.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<NotaEvolucion>(b =>
+        {
+            b.HasOne(n => n.Tenant).WithMany().HasForeignKey(n => n.TenantId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne(n => n.Paciente).WithMany().HasForeignKey(n => n.PacienteId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(n => n.Odontologo).WithMany().HasForeignKey(n => n.OdontologoId).OnDelete(DeleteBehavior.SetNull);
+            b.HasOne(n => n.Turno).WithMany().HasForeignKey(n => n.TurnoId).OnDelete(DeleteBehavior.SetNull);
+
+            b.HasIndex(n => new { n.PacienteId, n.Fecha });
+
+            b.HasQueryFilter(n => _tenantContext.EsSuperAdmin || n.TenantId == _tenantContext.TenantId);
         });
     }
 }

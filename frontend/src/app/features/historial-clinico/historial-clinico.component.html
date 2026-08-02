@@ -1,0 +1,132 @@
+<a class="volver" [routerLink]="['/pacientes']">← Volver a pacientes</a>
+
+<h1>Historia clínica{{ paciente() ? ' — ' + paciente()!.nombre : '' }}</h1>
+
+@if (cargando()) {
+  <p>Cargando...</p>
+} @else {
+  <div class="contenedor">
+    <form class="ficha-medica" (ngSubmit)="guardarFicha()">
+      <h2>Ficha médica</h2>
+      @if (fechaActualizacionFicha()) {
+        <p class="fecha-actualizacion">Última actualización: {{ fechaActualizacionFicha() | date: 'medium' }}</p>
+      }
+
+      <div class="fila-form">
+        <label>Alergias</label>
+        <textarea name="alergias" [(ngModel)]="alergias" rows="2"></textarea>
+      </div>
+      <div class="fila-form">
+        <label>Enfermedades preexistentes</label>
+        <textarea name="enfermedades" [(ngModel)]="enfermedadesPreexistentes" rows="2"></textarea>
+      </div>
+      <div class="fila-form">
+        <label>Medicación actual</label>
+        <textarea name="medicacion" [(ngModel)]="medicacionActual" rows="2"></textarea>
+      </div>
+      <div class="fila-form">
+        <label>Hábitos</label>
+        <textarea name="habitos" [(ngModel)]="habitos" rows="2" placeholder="Ej: fuma, bruxismo..."></textarea>
+      </div>
+      <div class="fila-form">
+        <label>Observaciones</label>
+        <textarea name="observaciones" [(ngModel)]="observaciones" rows="2"></textarea>
+      </div>
+
+      @if (errorFicha()) {
+        <p class="error">{{ errorFicha() }}</p>
+      }
+
+      <button type="submit" [disabled]="guardandoFicha()">
+        {{ guardandoFicha() ? 'Guardando...' : 'Guardar ficha médica' }}
+      </button>
+    </form>
+
+    <div class="notas-container">
+      <h2>Notas de evolución</h2>
+
+      <form class="form-nota" (ngSubmit)="agregarNota()" #formNota="ngForm">
+        <div class="fila-form">
+          <label>Motivo</label>
+          <textarea name="motivo" [(ngModel)]="nuevoMotivo" rows="2"></textarea>
+        </div>
+        <div class="fila-form">
+          <label>Diagnóstico</label>
+          <textarea name="diagnostico" [(ngModel)]="nuevoDiagnostico" rows="2"></textarea>
+        </div>
+        <div class="fila-form">
+          <label>Tratamiento realizado</label>
+          <textarea name="tratamientoRealizado" [(ngModel)]="nuevoTratamientoRealizado" rows="2"></textarea>
+        </div>
+        <div class="fila-form">
+          <label>Evolución</label>
+          <textarea name="evolucion" [(ngModel)]="nuevaEvolucion" rows="2"></textarea>
+        </div>
+        <div class="fila-form">
+          <label>Medicación</label>
+          <textarea name="medicacion" [(ngModel)]="nuevaMedicacion" rows="2"></textarea>
+        </div>
+        <div class="fila-form">
+          <label>Observaciones</label>
+          <textarea name="observaciones" [(ngModel)]="nuevasObservaciones" rows="2"></textarea>
+        </div>
+        <div class="fila-form">
+          <label>Odontólogo</label>
+          <select name="odontologo" [(ngModel)]="nuevoOdontologoId">
+            <option value="">(sin especificar)</option>
+            @for (o of odontologos(); track o.id) {
+              <option [value]="o.id">{{ o.nombre }}</option>
+            }
+          </select>
+        </div>
+        <div class="fila-form">
+          <label>¿Fue en un turno reservado por el sistema?</label>
+          <select name="turno" [(ngModel)]="turnoSeleccionado">
+            <option value="">No — voy a poner la fecha a mano</option>
+            @for (t of turnosPaciente(); track t.id) {
+              <option [value]="t.id">{{ t.fechaHora | date: 'short' }} · {{ t.estado }}</option>
+            }
+          </select>
+        </div>
+        @if (!turnoSeleccionado) {
+          <div class="fila-form">
+            <label>Fecha*</label>
+            <input name="fechaManual" type="date" [(ngModel)]="fechaManual" required />
+          </div>
+        }
+
+        @if (errorNota()) {
+          <p class="error">{{ errorNota() }}</p>
+        }
+
+        <button type="submit" [disabled]="formNota.invalid || guardandoNota()">
+          {{ guardandoNota() ? 'Guardando...' : 'Agregar nota' }}
+        </button>
+      </form>
+
+      @if (notas().length === 0) {
+        <p>Sin notas de evolución registradas todavía.</p>
+      } @else {
+        <ul class="notas">
+          @for (n of notas(); track n.id) {
+            <li>
+              <div class="fecha">
+                {{ n.fecha | date: 'medium' }}
+                @if (n.turnoId) { <span class="tag-turno">turno reservado</span> }
+                @if (n.odontologoId) { <span class="tag-odontologo">{{ nombreOdontologo(n.odontologoId) }}</span> }
+              </div>
+              <div class="contenido">
+                @if (n.motivo) { <p><strong>Motivo:</strong> {{ n.motivo }}</p> }
+                @if (n.diagnostico) { <p><strong>Diagnóstico:</strong> {{ n.diagnostico }}</p> }
+                @if (n.tratamientoRealizado) { <p><strong>Tratamiento realizado:</strong> {{ n.tratamientoRealizado }}</p> }
+                @if (n.evolucion) { <p><strong>Evolución:</strong> {{ n.evolucion }}</p> }
+                @if (n.medicacion) { <p><strong>Medicación:</strong> {{ n.medicacion }}</p> }
+                @if (n.observaciones) { <p><strong>Observaciones:</strong> {{ n.observaciones }}</p> }
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  </div>
+}

@@ -1,12 +1,13 @@
 <div class="header">
   <h1>Pacientes</h1>
-  <button (click)="mostrarForm.set(!mostrarForm())">
+  <button (click)="mostrarForm() ? cancelar() : abrirNuevo()">
     {{ mostrarForm() ? 'Cancelar' : '+ Nuevo paciente' }}
   </button>
 </div>
 
 @if (mostrarForm()) {
-  <form class="form-paciente" (ngSubmit)="crear()" #form="ngForm">
+  <form class="form-paciente" (ngSubmit)="guardar()" #form="ngForm">
+    <h2>{{ editandoId() ? 'Editar paciente' : 'Nuevo paciente' }}</h2>
     <div class="fila">
       <label>Nombre*</label>
       <input name="nombre" type="text" [(ngModel)]="nombre" required />
@@ -27,21 +28,39 @@
       <label>Fecha de nacimiento</label>
       <input name="fechaNacimiento" type="date" [(ngModel)]="fechaNacimiento" />
     </div>
+    <div class="fila">
+      <label>Odontólogo principal</label>
+      <select name="odontologoPrincipal" [(ngModel)]="odontologoPrincipalId">
+        <option value="">(sin asignar)</option>
+        @for (o of contexto.odontologos(); track o.id) {
+          <option [value]="o.id">{{ o.nombre }}</option>
+        }
+      </select>
+    </div>
 
     @if (error()) {
       <p class="error">{{ error() }}</p>
     }
 
     <button type="submit" [disabled]="form.invalid || guardando()">
-      {{ guardando() ? 'Guardando...' : 'Guardar paciente' }}
+      {{ guardando() ? 'Guardando...' : (editandoId() ? 'Guardar cambios' : 'Guardar paciente') }}
     </button>
   </form>
 }
 
+<div class="buscador">
+  <input
+    type="text"
+    placeholder="Buscar por nombre, DNI o teléfono..."
+    [ngModel]="busqueda()"
+    (ngModelChange)="busqueda.set($event)"
+  />
+</div>
+
 @if (cargando()) {
   <p>Cargando...</p>
-} @else if (pacientes().length === 0) {
-  <p>No hay pacientes cargados todavía.</p>
+} @else if (pacientesFiltrados().length === 0) {
+  <p>{{ pacientes().length === 0 ? 'No hay pacientes cargados todavía.' : 'Ningún paciente coincide con la búsqueda.' }}</p>
 } @else {
   <table class="tabla-pacientes">
     <thead>
@@ -51,16 +70,20 @@
         <th>Teléfono</th>
         <th>Email</th>
         <th></th>
+        <th></th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
-      @for (p of pacientes(); track p.id) {
+      @for (p of pacientesFiltrados(); track p.id) {
         <tr>
           <td>{{ p.nombre }}</td>
           <td>{{ p.dni || '-' }}</td>
           <td>{{ p.telefono || '-' }}</td>
           <td>{{ p.email || '-' }}</td>
           <td><a [routerLink]="['/pacientes', p.id, 'odontograma']">Odontograma</a></td>
+          <td><a [routerLink]="['/pacientes', p.id, 'historial-clinico']">Historia clínica</a></td>
+          <td><button type="button" class="btn-editar" (click)="editar(p)">Editar</button></td>
         </tr>
       }
     </tbody>

@@ -1,0 +1,92 @@
+.aviso {
+  padding: 1rem;
+  border-radius: 8px;
+  max-width: 480px;
+}
+
+.aviso-pendiente {
+  background: #fff3cd;
+  border: 1px solid #ffe69c;
+}
+
+.aviso-suspendido {
+  background: #f8d7da;
+  border: 1px solid #f1aeb5;
+}
+
+.aviso-ok {
+  color: #16803c;
+}
+
+.aviso-prueba {
+  background: #e0f2fe;
+  color: #0369a1;
+
+  a {
+    color: #0369a1;
+    font-weight: 600;
+  }
+}
+
+.boton-plan {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  background: #b91c1c;
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.resumen {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-top: 1.5rem;
+}
+
+.tarjeta {
+  background: white;
+  border-radius: 8px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  width: 320px;
+
+  h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 0.75rem;
+  }
+
+  li {
+    padding: 0.4rem 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.9rem;
+  }
+
+  .vacio {
+    color: #888;
+    font-size: 0.9rem;
+  }
+
+  a {
+    font-size: 0.85rem;
+    color: #2563eb;
+    text-decoration: none;
+  }
+
+  .chip {
+    float: right;
+    background: #f1f5f9;
+    color: #555;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+  }
+}

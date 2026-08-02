@@ -2,12 +2,28 @@
   <aside class="sidebar">
     <div class="logo">Odonto SaaS</div>
 
+    @if (contexto.hayMasDeUno()) {
+      <div class="selector-odontologo">
+        <label>Viendo a</label>
+        <select
+          [ngModel]="contexto.seleccionadoId()"
+          (ngModelChange)="contexto.seleccionar($event)"
+        >
+          @for (o of contexto.odontologos(); track o.id) {
+            <option [value]="o.id">{{ o.nombre }}</option>
+          }
+        </select>
+      </div>
+    }
+
     <nav>
       <a routerLink="/inicio" routerLinkActive="activo">Inicio</a>
       <a routerLink="/agenda" routerLinkActive="activo">Agenda</a>
       <a routerLink="/pacientes" routerLinkActive="activo">Pacientes</a>
       <a routerLink="/tratamientos" routerLinkActive="activo">Tratamientos</a>
       <a routerLink="/disponibilidad" routerLinkActive="activo">Disponibilidad</a>
+      <a routerLink="/odontologos" routerLinkActive="activo">Odontólogos</a>
+      <a routerLink="/plan" routerLinkActive="activo">Plan</a>
       @if (auth.sesion()?.rol === 'SuperAdmin') {
         <a routerLink="/admin/tenants" routerLinkActive="activo">Tenants</a>
       }

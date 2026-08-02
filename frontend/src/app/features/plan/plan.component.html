@@ -1,0 +1,54 @@
+<h1>Plan y suscripción</h1>
+
+@if (vencioPrueba()) {
+  <div class="aviso aviso-suspendido">
+    <strong>Tu período de prueba terminó.</strong>
+    <p>Elegí un plan y suscribite para seguir usando el sistema.</p>
+  </div>
+}
+
+@if (cargando()) {
+  <p>Cargando...</p>
+} @else {
+  @if (tenant()) {
+    <div class="estado-actual">
+      @if (tenant()!.enPrueba) {
+        <p class="en-prueba">
+          Estás en el mes de prueba gratis — te quedan <strong>{{ tenant()!.diasRestantesDePrueba }}</strong>
+          día(s).
+        </p>
+      } @else if (tenant()!.tienePagoActivo) {
+        <p class="pagando">Tu suscripción está activa (plan {{ tenant()!.planNombre }}).</p>
+      } @else if (tenant()!.estado === 'Suspendido') {
+        <p class="suspendido">Tu cuenta está suspendida. Suscribite a un plan para reactivarla.</p>
+      }
+    </div>
+  }
+
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
+  }
+
+  <div class="planes">
+    @for (p of planes(); track p.id) {
+      <div class="tarjeta-plan" [class.actual]="p.id === tenant()?.planId">
+        <h2>{{ p.nombre }}</h2>
+        <p class="precio">${{ p.precioMensual | number: '1.0-0' }} <span>/ mes</span></p>
+        <p class="limite">Hasta {{ p.maxOdontologos }} odontólogo(s)</p>
+
+        @if (p.id === tenant()?.planId && tenant()?.tienePagoActivo) {
+          <button type="button" disabled>Plan actual</button>
+        } @else {
+          <button type="button" [disabled]="suscribiendoId() === p.id" (click)="suscribirse(p)">
+            {{ suscribiendoId() === p.id ? 'Redirigiendo...' : 'Suscribirme' }}
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+  <p class="nota">
+    Al suscribirte, se te redirige a la página segura de Mercado Pago para cargar tu tarjeta. Odonto
+    SaaS nunca guarda los datos de tu tarjeta.
+  </p>
+}

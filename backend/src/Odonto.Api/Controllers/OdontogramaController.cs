@@ -35,6 +35,20 @@ public class OdontogramaController : ControllerBase
 
     private const long TamanioMaximoBytes = 20 * 1024 * 1024; // 20 MB
 
+    // Solo imágenes y PDF: son los únicos tipos que este flujo necesita
+    // (radiografías, fotos intraorales, estudios). El ContentType que
+    // guardamos y devolvemos sale de ESTE mapa, no del header que manda el
+    // cliente (que es fácil de falsificar) — así el visor del frontend
+    // nunca termina mostrando/ejecutando algo que no sea lo esperado.
+    private static readonly Dictionary<string, string> TiposPermitidos = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [".jpg"] = "image/jpeg",
+        [".jpeg"] = "image/jpeg",
+        [".png"] = "image/png",
+        [".webp"] = "image/webp",
+        [".pdf"] = "application/pdf"
+    };
+
     private readonly AppDbContext _db;
     private readonly IWebHostEnvironment _env;
 
@@ -220,6 +234,15 @@ public class OdontogramaController : ControllerBase
         if (archivo.Length > TamanioMaximoBytes)
             return BadRequest(new { message = "El archivo supera el tamaño máximo permitido (20 MB)." });
 
+        var extension = Path.GetExtension(archivo.FileName);
+        if (!TiposPermitidos.TryGetValue(extension, out var contentTypeSeguro))
+        {
+            return BadRequest(new
+            {
+                message = "Tipo de archivo no permitido. Solo se aceptan imágenes (JPG, PNG, WEBP) y PDF."
+            });
+        }
+
         var evento = await _db.EventosOdontograma.FirstOrDefaultAsync(e => e.Id == eventoId, ct);
         if (evento is null) return NotFound(new { message = "Evento no encontrado." });
 
@@ -230,7 +253,6 @@ public class OdontogramaController : ControllerBase
         var carpeta = Path.Combine(_env.ContentRootPath, "uploads", evento.TenantId.ToString(), evento.PacienteId.ToString());
         Directory.CreateDirectory(carpeta);
 
-        var extension = Path.GetExtension(archivo.FileName);
         var nombreEnDisco = $"{Guid.NewGuid()}{extension}";
         var rutaCompleta = Path.Combine(carpeta, nombreEnDisco);
 
@@ -245,7 +267,7 @@ public class OdontogramaController : ControllerBase
             EventoOdontogramaId = evento.Id,
             NombreOriginal = archivo.FileName,
             RutaEnDisco = rutaCompleta,
-            ContentType = string.IsNullOrWhiteSpace(archivo.ContentType) ? "application/octet-stream" : archivo.ContentType,
+            ContentType = contentTypeSeguro,
             TamanioBytes = archivo.Length
         };
 

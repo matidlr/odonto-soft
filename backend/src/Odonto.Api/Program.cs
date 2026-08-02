@@ -1,7 +1,10 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Odonto.Api.Authorization;
@@ -57,6 +60,27 @@ builder.Services.AddSwaggerGen(options =>
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Falta configurar Jwt:Key en appsettings o en variables de entorno.");
 
+// El valor que viene de fábrica en appsettings.json (repo público) es un
+// placeholder a propósito. Si alguna vez se despliega sin pisarlo por
+// variable de entorno / secret manager, cualquiera que vea el repo podría
+// firmar JWTs válidos. En Development lo dejamos pasar con un aviso; en
+// cualquier otro ambiente, directamente no arranca.
+const string jwtKeyPlaceholder = "CHANGE_ME_super_secret_key_min_32_chars_prod";
+if (jwtKey == jwtKeyPlaceholder)
+{
+    if (!builder.Environment.IsDevelopment())
+    {
+        throw new InvalidOperationException(
+            "Jwt:Key sigue con el valor de ejemplo del repo. Configurá una clave real y secreta " +
+            "(variable de entorno o secret manager) antes de desplegar.");
+    }
+    Console.WriteLine("ADVERTENCIA: Jwt:Key todavía es el valor de ejemplo del repo. No usar así en producción.");
+}
+if (jwtKey.Length < 32)
+{
+    throw new InvalidOperationException("Jwt:Key debe tener al menos 32 caracteres para ser segura.");
+}
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -80,8 +104,32 @@ builder.Services.AddAuthorization(options =>
     // Política que exigen los endpoints de negocio (pacientes, turnos, etc.):
     // el tenant del usuario tiene que estar Activo (o ser SuperAdmin).
     options.AddPolicy("TenantActivo", policy => policy.Requirements.Add(new TenantActivoRequirement()));
+
+    // "Denegado por defecto": cualquier endpoint que no tenga [Authorize] ni
+    // [AllowAnonymous] exige sesión igual. Así, si el día de mañana se
+    // agrega un controller nuevo y alguien se olvida de decorarlo, no
+    // queda expuesto sin querer — [AllowAnonymous] lo sigue pudiendo abrir
+    // a propósito (auth, registro público, webhooks, /health).
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
 });
 builder.Services.AddScoped<IAuthorizationHandler, TenantActivoHandler>();
+
+// Límite de intentos para endpoints sensibles a fuerza bruta / spam
+// (login, registro, recuperación de contraseña): 5 pedidos por minuto por
+// IP. Sin esto, nada impide probar contraseñas en loop o inundar de
+// emails de reseteo a una casilla ajena.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter("auth", opt =>
+    {
+        opt.PermitLimit = 5;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueLimit = 0;
+    });
+});
 
 builder.Services.AddCors(options =>
 {
@@ -94,6 +142,61 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Manejo centralizado de errores no capturados: siempre quedan registrados
+// en el log (con stack trace completo para debug), pero el cliente nunca
+// recibe esos detalles — solo un mensaje genérico. En Development se ve
+// además la página de diagnóstico de ASP.NET Core para debuggear rápido.
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+else
+{
+    app.UseExceptionHandler(errorApp =>
+    {
+        errorApp.Run(async context =>
+        {
+            var feature = context.Features.Get<IExceptionHandlerFeature>();
+            if (feature?.Error is not null)
+            {
+                var logger = context.RequestServices.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("GlobalExceptionHandler");
+                logger.LogError(feature.Error, "Error no controlado en {Method} {Path}",
+                    context.Request.Method, context.Request.Path);
+            }
+
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new
+            {
+                message = "Ocurrió un error inesperado. Probá de nuevo en un momento."
+            });
+        });
+    });
+
+    // Sin certificado https en el perfil de Development (Kestrel solo
+    // escucha por http en local), así que esto queda restringido a otros
+    // ambientes para no romper el flujo de desarrollo.
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+
+// Headers de seguridad básicos en todas las respuestas. La CSP queda
+// afuera de Development porque Swagger UI necesita cargar sus propios
+// scripts/estilos y una política estricta se los bloquearía.
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["Referrer-Policy"] = "no-referrer";
+    context.Response.Headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()";
+    if (!app.Environment.IsDevelopment())
+    {
+        context.Response.Headers["Content-Security-Policy"] = "default-src 'none'";
+    }
+    await next();
+});
 
 if (app.Environment.IsDevelopment())
 {
@@ -108,6 +211,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

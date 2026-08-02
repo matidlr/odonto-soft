@@ -1,0 +1,62 @@
+<div class="header">
+  <h1>Odontólogos</h1>
+  <button (click)="mostrarForm.set(!mostrarForm())">
+    {{ mostrarForm() ? 'Cancelar' : '+ Agregar odontólogo' }}
+  </button>
+</div>
+
+@if (mostrarForm()) {
+  <form class="form-odontologo" (ngSubmit)="crear()" #form="ngForm">
+    <div class="fila">
+      <label>Nombre*</label>
+      <input name="nombre" type="text" [(ngModel)]="nombre" required placeholder="Ej: Dra. María Pérez" />
+    </div>
+    <div class="fila">
+      <label>Matrícula*</label>
+      <input name="matricula" type="text" [(ngModel)]="matricula" required />
+    </div>
+    <div class="fila">
+      <label>Especialidad</label>
+      <input name="especialidad" type="text" [(ngModel)]="especialidad" placeholder="Ej: Ortodoncia" />
+    </div>
+    <div class="fila">
+      <label>Color en la agenda</label>
+      <input name="color" type="color" [(ngModel)]="colorAgenda" />
+    </div>
+
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
+
+    <button type="submit" [disabled]="form.invalid || guardando()">
+      {{ guardando() ? 'Guardando...' : 'Guardar' }}
+    </button>
+  </form>
+}
+
+@if (!contexto.cargado()) {
+  <p>Cargando...</p>
+} @else if (contexto.odontologos().length === 0) {
+  <p>No hay odontólogos cargados todavía.</p>
+} @else {
+  <table class="tabla">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Nombre</th>
+        <th>Matrícula</th>
+        <th>Especialidad</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (o of contexto.odontologos(); track o.id) {
+        <tr>
+          <td><span class="punto-color" [style.background]="o.colorAgenda"></span></td>
+          <td>{{ o.nombre }}</td>
+          <td>{{ o.matricula }}</td>
+          <td>{{ o.especialidad || '-' }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

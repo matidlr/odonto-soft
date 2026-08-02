@@ -1,105 +1,182 @@
 <div class="header">
   <h1>Agenda</h1>
-  <button (click)="mostrarForm.set(!mostrarForm())">
-    {{ mostrarForm() ? 'Cancelar' : '+ Nuevo turno' }}
+  <button
+    type="button"
+    class="btn-modo-bloqueo"
+    [class.activo]="modoBloqueo()"
+    (click)="modoBloqueo.set(!modoBloqueo())"
+  >
+    {{ modoBloqueo() ? 'Saliendo del modo bloqueo' : 'Bloquear horarios' }}
   </button>
 </div>
-
-<div class="filtros">
-  <label>
-    Desde
-    <input type="date" [(ngModel)]="desde" (change)="cargarTurnos()" />
-  </label>
-  <label>
-    Hasta
-    <input type="date" [(ngModel)]="hasta" (change)="cargarTurnos()" />
-  </label>
-</div>
-
-@if (mostrarForm()) {
-  <form class="form-turno" (ngSubmit)="crearTurno()" #form="ngForm">
-    <div class="fila">
-      <label>Paciente*</label>
-      <select name="paciente" [(ngModel)]="nuevoPacienteId" required>
-        <option value="" disabled>Elegí un paciente</option>
-        @for (p of pacientes(); track p.id) {
-          <option [value]="p.id">{{ p.nombre }}</option>
-        }
-      </select>
-    </div>
-
-    <div class="fila">
-      <label>Odontólogo*</label>
-      <select name="odontologo" [(ngModel)]="nuevoOdontologoId" required>
-        <option value="" disabled>Elegí un odontólogo</option>
-        @for (o of odontologos(); track o.id) {
-          <option [value]="o.id">{{ o.nombre }}</option>
-        }
-      </select>
-    </div>
-
-    <div class="fila">
-      <label>Tipo de tratamiento</label>
-      <select name="tratamiento" [(ngModel)]="nuevoTipoTratamientoId">
-        <option value="">(sin especificar, 30 min por defecto)</option>
-        @for (t of tiposTratamiento(); track t.id) {
-          <option [value]="t.id">{{ t.nombre }} ({{ t.duracionMinutos }} min)</option>
-        }
-      </select>
-    </div>
-
-    <div class="fila">
-      <label>Fecha y hora*</label>
-      <input type="datetime-local" name="fechaHora" [(ngModel)]="nuevaFechaHora" required />
-    </div>
-
-    @if (errorForm()) {
-      <p class="error">{{ errorForm() }}</p>
-    }
-
-    <button type="submit" [disabled]="form.invalid || guardando()">
-      {{ guardando() ? 'Reservando...' : 'Reservar turno' }}
-    </button>
-  </form>
-}
 
 @if (error()) {
   <p class="error">{{ error() }}</p>
 }
 
-@if (cargando()) {
-  <p>Cargando...</p>
-} @else if (turnos().length === 0) {
-  <p>No hay turnos en ese rango de fechas.</p>
+@if (modoBloqueo()) {
+  <p class="aviso-modo-bloqueo">
+    Modo bloqueo activo: hacé clic en una franja libre para bloquearla, o en una bloqueada para
+    liberarla.
+  </p>
+}
+
+<div class="calendario-header">
+  <button type="button" (click)="cambiarMes(-1)">←</button>
+  <h2>{{ nombreMes() }}</h2>
+  <button type="button" (click)="cambiarMes(1)">→</button>
+</div>
+
+@if (!contexto.seleccionadoId()) {
+  <p>Cargando odontólogo...</p>
 } @else {
-  <table class="tabla-turnos">
-    <thead>
-      <tr>
-        <th>Fecha y hora</th>
-        <th>Paciente</th>
-        <th>Odontólogo</th>
-        <th>Tratamiento</th>
-        <th>Duración</th>
-        <th>Estado</th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (t of turnos(); track t.id) {
-        <tr [class.cancelado]="t.estado === 'Cancelado'">
-          <td>{{ t.fechaHora | date: 'short' }}</td>
-          <td>{{ t.pacienteNombre }}</td>
-          <td>{{ nombreOdontologo()(t.odontologoId) }}</td>
-          <td>{{ nombreTratamiento()(t.tipoTratamientoId) }}</td>
-          <td>{{ t.duracionMinutos }} min</td>
-          <td>
-            <select [ngModel]="t.estado" (ngModelChange)="cambiarEstado(t, $event)">
+  <div class="calendario">
+    <div class="dia-semana">Lun</div>
+    <div class="dia-semana">Mar</div>
+    <div class="dia-semana">Mié</div>
+    <div class="dia-semana">Jue</div>
+    <div class="dia-semana">Vie</div>
+    <div class="dia-semana">Sáb</div>
+    <div class="dia-semana">Dom</div>
+
+    @for (d of diasDelMes(); track $index) {
+      @if (d === null) {
+        <div class="celda-vacia"></div>
+      } @else {
+        <button
+          type="button"
+          class="celda-dia"
+          [class.hoy]="esHoy(d)"
+          [class.seleccionado]="esDiaSeleccionado(d)"
+          (click)="seleccionarDia(d)"
+        >
+          <span class="numero">{{ d.getDate() }}</span>
+          @if (cantidadEnDia(d) > 0) {
+            <span class="badge">{{ cantidadEnDia(d) }}</span>
+          }
+        </button>
+      }
+    }
+  </div>
+
+  @if (diaSeleccionado()) {
+    <div class="panel-dia">
+      <div class="panel-dia-header">
+        <h2>{{ diaSeleccionado()! | date: 'fullDate' }}</h2>
+        @if (diaDetalle()) {
+          <button
+            type="button"
+            class="btn-bloquear-dia"
+            [disabled]="procesandoBloqueo()"
+            (click)="alternarBloqueoDiaCompleto()"
+          >
+            {{ diaDetalle()!.todoElDiaBloqueado ? 'Desbloquear día completo' : 'Bloquear día completo' }}
+          </button>
+        }
+      </div>
+
+      @if (cargandoDia()) {
+        <p>Cargando...</p>
+      } @else if (diaDetalle()) {
+        @if (diaDetalle()!.todoElDiaBloqueado) {
+          <p class="vacio">Este día está bloqueado, no se atiende.</p>
+        } @else if (diaDetalle()!.ventanas.length === 0) {
+          <p class="vacio">
+            No hay horario configurado para este día. Podés configurarlo en
+            <a routerLink="/disponibilidad">Disponibilidad</a>.
+          </p>
+        } @else {
+          <div class="grilla-horarios">
+            @for (slot of slotsDelDia(); track slot.hora) {
+              <button
+                type="button"
+                class="slot"
+                [class.slot-libre]="slot.estado === 'libre'"
+                [class.slot-reservado]="slot.estado === 'reservado'"
+                [class.slot-bloqueado]="slot.estado === 'bloqueado'"
+                [disabled]="procesandoBloqueo()"
+                (click)="clicSlot(slot)"
+              >
+                <span class="hora">{{ slot.hora }}</span>
+                @if (slot.estado === 'reservado' && slot.turno) {
+                  <span class="detalle">{{ slot.turno.pacienteNombre }}</span>
+                } @else if (slot.estado === 'bloqueado') {
+                  <span class="detalle">Bloqueado</span>
+                } @else {
+                  <span class="detalle">Libre</span>
+                }
+              </button>
+            }
+          </div>
+        }
+      }
+
+      @if (slotParaReservar()) {
+        <div class="form-reserva">
+          <h3>Reservar {{ slotParaReservar() }}</h3>
+          <div class="fila-form">
+            <label>Paciente*</label>
+            <select [(ngModel)]="nuevoPacienteId">
+              <option value="" disabled>Elegí un paciente</option>
+              @for (p of pacientes(); track p.id) {
+                <option [value]="p.id">{{ p.nombre }}</option>
+              }
+            </select>
+          </div>
+          <div class="fila-form">
+            <label>Tipo de tratamiento</label>
+            <select [(ngModel)]="nuevoTipoTratamientoId" (ngModelChange)="onCambioTratamiento()">
+              <option value="">(sin especificar)</option>
+              @for (t of tiposTratamiento(); track t.id) {
+                <option [value]="t.id">{{ t.nombre }} ({{ t.duracionMinutos }} min)</option>
+              }
+            </select>
+          </div>
+          <div class="fila-form">
+            <label>Hasta*</label>
+            <input type="time" step="900" [(ngModel)]="horaHasta" />
+          </div>
+
+          @if (errorTurno()) {
+            <p class="error">{{ errorTurno() }}</p>
+          }
+
+          <div class="acciones-form">
+            <button type="button" class="btn-cancelar" (click)="cancelarReserva()">Cancelar</button>
+            <button
+              type="button"
+              class="btn-confirmar"
+              [disabled]="!nuevoPacienteId || !horaHasta || guardandoTurno()"
+              (click)="confirmarReserva()"
+            >
+              {{ guardandoTurno() ? 'Reservando...' : 'Reservar turno' }}
+            </button>
+          </div>
+        </div>
+      }
+
+      @if (turnoSeleccionado(); as turno) {
+        <div class="detalle-turno">
+          <div class="detalle-turno-header">
+            <h3>{{ turno.horaInicio }} – {{ turno.horaFin }}</h3>
+            <button type="button" class="cerrar" (click)="cerrarDetalleTurno()">✕</button>
+          </div>
+          <p><strong>Paciente:</strong> {{ turno.pacienteNombre }}</p>
+          <p><strong>Tratamiento:</strong> {{ nombreTratamiento(turno.tipoTratamientoId) }}</p>
+          <div class="fila-form">
+            <label>Estado</label>
+            <select
+              [ngModel]="turno.estado"
+              [disabled]="cambiandoEstado()"
+              (ngModelChange)="cambiarEstadoSeleccionado($event)"
+            >
               @for (e of estados; track e) {
                 <option [value]="e">{{ e }}</option>
               }
             </select>
-          </td>
-        </tr>
+          </div>
+        </div>
       }
-    </tbody>
-  </table>
+    </div>
+  }
 }

@@ -6,6 +6,7 @@ import {
   DiaSemana,
   TipoDisponibilidad
 } from '../../core/disponibilidad.service';
+import { OdontologoContextoService } from '../../core/odontologo-contexto.service';
 import { Odontologo, OdontologoService } from '../../core/odontologo.service';
 
 const DIAS: DiaSemana[] = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'];
@@ -40,13 +41,19 @@ export class DisponibilidadComponent implements OnInit {
 
   constructor(
     private disponibilidadService: DisponibilidadService,
-    private odontologoService: OdontologoService
+    private odontologoService: OdontologoService,
+    public contexto: OdontologoContextoService
   ) {}
 
   async ngOnInit(): Promise<void> {
     this.odontologos.set(await this.odontologoService.getAll());
     if (this.odontologos().length > 0) {
-      this.odontologoSeleccionado = this.odontologos()[0].id;
+      // Arrancamos con el odontólogo elegido en el navbar, si hay uno.
+      const seleccionadoEnNavbar = this.contexto.seleccionadoId();
+      this.odontologoSeleccionado =
+        (seleccionadoEnNavbar && this.odontologos().some((o) => o.id === seleccionadoEnNavbar)
+          ? seleccionadoEnNavbar
+          : this.odontologos()[0].id);
       await this.cargarReglas();
     } else {
       this.cargando.set(false);

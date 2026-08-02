@@ -84,7 +84,7 @@ public class PublicController : ControllerBase
         var odontologos = await _db.Odontologos
             .IgnoreQueryFilters()
             .Where(o => o.TenantId == tenant.Id)
-            .Select(o => new { o.Id, Nombre = o.Usuario.Nombre, o.Especialidad })
+            .Select(o => new { o.Id, o.Nombre, o.Especialidad })
             .ToListAsync(ct);
 
         return Ok(odontologos);

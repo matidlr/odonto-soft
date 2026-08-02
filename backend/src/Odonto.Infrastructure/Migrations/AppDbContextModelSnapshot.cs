@@ -152,6 +152,101 @@ namespace Odonto.Infrastructure.Migrations
                     b.ToTable("EventosOdontograma");
                 });
 
+            modelBuilder.Entity("Odonto.Domain.Entities.FichaMedica", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Alergias")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("EnfermedadesPreexistentes")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("FechaActualizacion")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Habitos")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("MedicacionActual")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Observaciones")
+                        .HasColumnType("longtext");
+
+                    b.Property<Guid>("PacienteId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PacienteId")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("FichasMedicas");
+                });
+
+            modelBuilder.Entity("Odonto.Domain.Entities.NotaEvolucion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Diagnostico")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Evolucion")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Medicacion")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Motivo")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Observaciones")
+                        .HasColumnType("longtext");
+
+                    b.Property<Guid?>("OdontologoId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("PacienteId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("TratamientoRealizado")
+                        .HasColumnType("longtext");
+
+                    b.Property<Guid?>("TurnoId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OdontologoId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TurnoId");
+
+                    b.HasIndex("PacienteId", "Fecha");
+
+                    b.ToTable("NotasEvolucion");
+                });
+
             modelBuilder.Entity("Odonto.Domain.Entities.Notificacion", b =>
                 {
                     b.Property<Guid>("Id")
@@ -202,10 +297,16 @@ namespace Odonto.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("longtext")
+                        .HasDefaultValue("");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("char(36)");
 
-                    b.Property<Guid>("UsuarioId")
+                    b.Property<Guid?>("UsuarioId")
                         .HasColumnType("char(36)");
 
                     b.HasKey("Id");
@@ -257,6 +358,33 @@ namespace Odonto.Infrastructure.Migrations
                     b.ToTable("Pacientes");
                 });
 
+            modelBuilder.Entity("Odonto.Domain.Entities.Plan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("MaxOdontologos")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PrecioMensual")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Planes");
+                });
+
             modelBuilder.Entity("Odonto.Domain.Entities.Tenant", b =>
                 {
                     b.Property<Guid>("Id")
@@ -267,6 +395,9 @@ namespace Odonto.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<DateTime>("FechaAlta")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("FechaFinPrueba")
                         .HasColumnType("datetime(6)");
 
                     b.Property<string>("MercadoPagoPreapprovalId")
@@ -283,7 +414,12 @@ namespace Odonto.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(255)");
 
+                    b.Property<bool>("TienePagoActivo")
+                        .HasColumnType("tinyint(1)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("PlanId");
 
                     b.HasIndex("Slug")
                         .IsUnique();
@@ -315,6 +451,38 @@ namespace Odonto.Infrastructure.Migrations
                     b.HasIndex("TenantId");
 
                     b.ToTable("TiposTratamiento");
+                });
+
+            modelBuilder.Entity("Odonto.Domain.Entities.TokenResetPassword", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("FechaExpiracion")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<bool>("Usado")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("TokensResetPassword");
                 });
 
             modelBuilder.Entity("Odonto.Domain.Entities.Turno", b =>
@@ -474,6 +642,58 @@ namespace Odonto.Infrastructure.Migrations
                     b.Navigation("Turno");
                 });
 
+            modelBuilder.Entity("Odonto.Domain.Entities.FichaMedica", b =>
+                {
+                    b.HasOne("Odonto.Domain.Entities.Paciente", "Paciente")
+                        .WithMany()
+                        .HasForeignKey("PacienteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odonto.Domain.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Paciente");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Odonto.Domain.Entities.NotaEvolucion", b =>
+                {
+                    b.HasOne("Odonto.Domain.Entities.Odontologo", "Odontologo")
+                        .WithMany()
+                        .HasForeignKey("OdontologoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odonto.Domain.Entities.Paciente", "Paciente")
+                        .WithMany()
+                        .HasForeignKey("PacienteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odonto.Domain.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Odonto.Domain.Entities.Turno", "Turno")
+                        .WithMany()
+                        .HasForeignKey("TurnoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Odontologo");
+
+                    b.Navigation("Paciente");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("Turno");
+                });
+
             modelBuilder.Entity("Odonto.Domain.Entities.Notificacion", b =>
                 {
                     b.HasOne("Odonto.Domain.Entities.Turno", "Turno")
@@ -496,8 +716,7 @@ namespace Odonto.Infrastructure.Migrations
                     b.HasOne("Odonto.Domain.Entities.Usuario", "Usuario")
                         .WithMany()
                         .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Tenant");
 
@@ -522,6 +741,16 @@ namespace Odonto.Infrastructure.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Odonto.Domain.Entities.Tenant", b =>
+                {
+                    b.HasOne("Odonto.Domain.Entities.Plan", "Plan")
+                        .WithMany()
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Plan");
+                });
+
             modelBuilder.Entity("Odonto.Domain.Entities.TipoTratamiento", b =>
                 {
                     b.HasOne("Odonto.Domain.Entities.Tenant", "Tenant")
@@ -531,6 +760,17 @@ namespace Odonto.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Odonto.Domain.Entities.TokenResetPassword", b =>
+                {
+                    b.HasOne("Odonto.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("Odonto.Domain.Entities.Turno", b =>

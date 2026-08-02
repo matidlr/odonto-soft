@@ -10,6 +10,7 @@ export interface Paciente {
   telefono: string | null;
   email: string | null;
   fechaNacimiento: string | null;
+  odontologoPrincipalId: string | null;
 }
 
 export interface CrearPacienteRequest {
@@ -18,17 +19,24 @@ export interface CrearPacienteRequest {
   telefono?: string;
   email?: string;
   fechaNacimiento?: string;
+  odontologoPrincipalId?: string;
 }
 
 @Injectable({ providedIn: 'root' })
 export class PacienteService {
   constructor(private http: HttpClient) {}
 
-  getAll(): Promise<Paciente[]> {
-    return firstValueFrom(this.http.get<Paciente[]>(`${API_BASE_URL}/pacientes`));
+  getAll(odontologoId?: string): Promise<Paciente[]> {
+    const params: Record<string, string> = {};
+    if (odontologoId) params['odontologoId'] = odontologoId;
+    return firstValueFrom(this.http.get<Paciente[]>(`${API_BASE_URL}/pacientes`, { params }));
   }
 
   crear(datos: CrearPacienteRequest): Promise<{ id: string }> {
     return firstValueFrom(this.http.post<{ id: string }>(`${API_BASE_URL}/pacientes`, datos));
+  }
+
+  editar(id: string, datos: CrearPacienteRequest): Promise<{ id: string }> {
+    return firstValueFrom(this.http.put<{ id: string }>(`${API_BASE_URL}/pacientes/${id}`, datos));
   }
 }

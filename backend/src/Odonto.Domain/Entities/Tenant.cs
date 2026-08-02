@@ -15,6 +15,18 @@ public class Tenant
     // Referencia a la suscripción de Mercado Pago asociada a este tenant.
     public string? MercadoPagoPreapprovalId { get; set; }
     public Guid? PlanId { get; set; }
+    public Plan? Plan { get; set; }
+
+    // Mes gratis: mientras hoy sea antes de esta fecha, el tenant tiene
+    // acceso aunque no haya pagado todavía. Se calcula una sola vez, al
+    // activarse la clínica (registro o activación manual del SuperAdmin).
+    public DateTime? FechaFinPrueba { get; set; }
+
+    // true solo mientras Mercado Pago confirmó una suscripción "authorized"
+    // vigente (lo actualiza el webhook). No tiene que ver con el período de
+    // prueba: sirve para saber si, pasado el mes gratis, el tenant sigue
+    // teniendo derecho a usar el sistema.
+    public bool TienePagoActivo { get; set; }
 
     public DateTime FechaAlta { get; set; } = DateTime.UtcNow;
 

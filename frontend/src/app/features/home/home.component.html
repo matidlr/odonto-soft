@@ -1,0 +1,76 @@
+<h1>Inicio</h1>
+<p>Rol: {{ auth.sesion()?.rol }}</p>
+
+@if (tenant()) {
+  <p>Clínica: {{ tenant()!.nombre }}</p>
+
+  @if (tenant()!.estado === 'PendienteDeActivacion') {
+    <div class="aviso aviso-pendiente">
+      <strong>Tu cuenta está pendiente de activación.</strong>
+      <p>
+        Podés ver la aplicación, pero todavía no vas a poder usar la agenda ni
+        cargar pacientes hasta que actives tu suscripción o el SuperAdmin habilite tu cuenta.
+      </p>
+    </div>
+  } @else if (tenant()!.estado === 'Suspendido') {
+    <div class="aviso aviso-suspendido">
+      <strong>Tu cuenta está suspendida.</strong>
+      <p>Se venció el período de prueba y no hay una suscripción activa.</p>
+      <a routerLink="/plan" class="boton-plan">Ver planes y suscribirme</a>
+    </div>
+  } @else {
+    @if (tenant()!.enPrueba) {
+      <div class="aviso aviso-prueba">
+        Estás en el mes de prueba gratis — te quedan <strong>{{ tenant()!.diasRestantesDePrueba }}</strong>
+        día(s). <a routerLink="/plan">Ver planes</a>
+      </div>
+    } @else {
+      <p class="aviso-ok">Cuenta activa ✓</p>
+    }
+
+    @if (cargandoTurnos()) {
+      <p>Cargando resumen del día...</p>
+    } @else {
+      <div class="resumen">
+        <div class="tarjeta">
+          <h2>Turnos de hoy ({{ cantidadHoy() }})</h2>
+          @if (turnosHoy().length === 0) {
+            <p class="vacio">No hay turnos para hoy.</p>
+          } @else {
+            <ul>
+              @for (t of turnosHoy(); track t.id) {
+                <li>
+                  <strong>{{ t.fechaHora | date: 'shortTime' }}</strong>
+                  — {{ t.pacienteNombre }}
+                  <span class="chip">{{ t.estado }}</span>
+                </li>
+              }
+            </ul>
+          }
+          <a routerLink="/agenda">Ir a la agenda →</a>
+        </div>
+
+        <div class="tarjeta">
+          <h2>Pendientes de confirmar ({{ pendientesDeConfirmar().length }})</h2>
+          @if (pendientesDeConfirmar().length === 0) {
+            <p class="vacio">No hay turnos solicitados sin confirmar (próx. 30 días).</p>
+          } @else {
+            <ul>
+              @for (t of pendientesDeConfirmar(); track t.id) {
+                <li>
+                  <strong>{{ t.fechaHora | date: 'short' }}</strong>
+                  — {{ t.pacienteNombre }}
+                </li>
+              }
+            </ul>
+          }
+          <a routerLink="/agenda">Ir a la agenda →</a>
+        </div>
+      </div>
+    }
+  }
+} @else if (auth.sesion()?.tenantId) {
+  <p>Cargando datos de la clínica...</p>
+} @else {
+  <p>(SuperAdmin, sin tenant asociado)</p>
+}

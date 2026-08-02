@@ -38,6 +38,13 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'pacientes/:pacienteId/historial-clinico',
+        loadComponent: () =>
+          import('./features/historial-clinico/historial-clinico.component').then(
+            (m) => m.HistorialClinicoComponent
+          )
+      },
+      {
         path: 'tratamientos',
         loadComponent: () =>
           import('./features/tratamientos/tratamientos.component').then(
@@ -50,6 +57,17 @@ export const routes: Routes = [
           import('./features/disponibilidad/disponibilidad.component').then(
             (m) => m.DisponibilidadComponent
           )
+      },
+      {
+        path: 'odontologos',
+        loadComponent: () =>
+          import('./features/odontologos/odontologos.component').then(
+            (m) => m.OdontologosComponent
+          )
+      },
+      {
+        path: 'plan',
+        loadComponent: () => import('./features/plan/plan.component').then((m) => m.PlanComponent)
       },
       {
         path: 'admin/tenants',
@@ -66,5 +84,17 @@ export const routes: Routes = [
     path: 'registro',
     loadComponent: () =>
       import('./features/auth/registro.component').then((m) => m.RegistroComponent)
+  },
+  {
+    path: 'olvide-password',
+    loadComponent: () =>
+      import('./features/auth/olvide-password.component').then((m) => m.OlvidePasswordComponent)
+  },
+  {
+    path: 'resetear-password',
+    loadComponent: () =>
+      import('./features/auth/resetear-password.component').then(
+        (m) => m.ResetearPasswordComponent
+      )
   }
 ];

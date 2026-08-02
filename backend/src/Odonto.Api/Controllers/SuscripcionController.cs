@@ -24,30 +24,45 @@ public class SuscripcionController : ControllerBase
         _mercadoPago = mercadoPago;
     }
 
-    // payerEmailPrueba: SOLO para probar en sandbox con una cuenta de prueba
+    public record IniciarPagoRequest(Guid PlanId, string? PayerEmailPrueba);
+
+    // PayerEmailPrueba: SOLO para probar en sandbox con una cuenta de prueba
     // "Comprador" (Mercado Pago exige que el payer_email exista de verdad
     // en modo test). En producción no se manda y se usa el email del login.
     [HttpPost("iniciar-pago")]
-    public async Task<IActionResult> IniciarPago([FromQuery] string? payerEmailPrueba, CancellationToken ct)
+    public async Task<IActionResult> IniciarPago(IniciarPagoRequest request, CancellationToken ct)
     {
         var tenantIdClaim = User.FindFirst("tenant_id")?.Value;
         if (!Guid.TryParse(tenantIdClaim, out var tenantId))
             return BadRequest(new { message = "No se pudo determinar el tenant del usuario (¿sos SuperAdmin?)." });
 
-        var email = string.IsNullOrWhiteSpace(payerEmailPrueba)
+        var email = string.IsNullOrWhiteSpace(request.PayerEmailPrueba)
             ? User.FindFirst("email")?.Value
-            : payerEmailPrueba;
+            : request.PayerEmailPrueba;
 
         if (string.IsNullOrWhiteSpace(email))
             return BadRequest(new { message = "No se pudo determinar el email del usuario." });
 
+        var plan = await _db.Planes.FirstOrDefaultAsync(p => p.Id == request.PlanId && p.Activo, ct);
+        if (plan is null) return BadRequest(new { message = "Plan inválido." });
+
         var tenant = await _db.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId, ct);
         if (tenant is null) return NotFound();
 
+        var cantidadActual = await _db.Odontologos.CountAsync(o => o.TenantId == tenantId, ct);
+        if (cantidadActual > plan.MaxOdontologos)
+        {
+            return BadRequest(new
+            {
+                message = $"Tenés {cantidadActual} odontólogo(s) cargados y el plan {plan.Nombre} permite hasta {plan.MaxOdontologos}. Elegí un plan más grande."
+            });
+        }
+
         var (preapprovalId, initPoint) = await _mercadoPago.CrearSuscripcionAsync(
-            tenant.Id, email, $"Suscripcion Odonto SaaS - {tenant.Nombre}", ct);
+            tenant.Id, email, $"Suscripcion Odonto SaaS - {tenant.Nombre} - Plan {plan.Nombre}", plan.PrecioMensual, ct);
 
         tenant.MercadoPagoPreapprovalId = preapprovalId;
+        tenant.PlanId = plan.Id;
         await _db.SaveChangesAsync(ct);
 
         return Ok(new { initPoint, preapprovalId });

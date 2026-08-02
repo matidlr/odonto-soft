@@ -82,6 +82,8 @@ public class WebhooksController : ControllerBase
         }
 
         var estadoAnterior = tenant.Estado;
+        var pagoActivoAnterior = tenant.TienePagoActivo;
+
         tenant.Estado = estadoMp switch
         {
             "authorized" => TenantEstado.Activo,
@@ -90,12 +92,17 @@ public class WebhooksController : ControllerBase
             _ => tenant.Estado // "pending" u otro: todavía no cambiamos nada
         };
 
-        if (tenant.Estado != estadoAnterior)
+        // Independiente del mes de prueba: esto es "¿hay una suscripción de
+        // Mercado Pago pagando de verdad?". Lo usa TenantEstadoService para
+        // decidir si suspender cuando se vence la prueba.
+        tenant.TienePagoActivo = estadoMp == "authorized";
+
+        if (tenant.Estado != estadoAnterior || tenant.TienePagoActivo != pagoActivoAnterior)
         {
             await _db.SaveChangesAsync(ct);
             _logger.LogInformation(
-                "Tenant {TenantId} pasó de {Anterior} a {Nuevo} por webhook MP (preapproval {PreapprovalId}, estado_mp={EstadoMp}).",
-                tenant.Id, estadoAnterior, tenant.Estado, dataId, estadoMp);
+                "Tenant {TenantId} pasó de {Anterior} a {Nuevo} (pago activo: {PagoActivo}) por webhook MP (preapproval {PreapprovalId}, estado_mp={EstadoMp}).",
+                tenant.Id, estadoAnterior, tenant.Estado, tenant.TienePagoActivo, dataId, estadoMp);
         }
 
         return Ok();

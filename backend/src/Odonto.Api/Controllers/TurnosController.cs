@@ -56,7 +56,98 @@ public class TurnosController : ControllerBase
         return Ok(turnos);
     }
 
-    public record ReservarTurnoManualRequest(Guid PacienteId, Guid OdontologoId, Guid? TipoTratamientoId, DateTime FechaHora);
+    public record VentanaResponse(string HoraInicio, string HoraFin);
+    public record BloqueoResponse(Guid Id, string HoraInicio, string HoraFin);
+
+    public record TurnoDelDiaResponse(
+        Guid Id,
+        string HoraInicio,
+        string HoraFin,
+        Guid PacienteId,
+        string PacienteNombre,
+        Guid? TipoTratamientoId,
+        int DuracionMinutos,
+        string Estado);
+
+    /// <summary>
+    /// Vista de un día puntual para el calendario de la agenda: las
+    /// ventanas habilitadas y los bloqueos (resueltos a partir de las
+    /// reglas de Disponibilidad para esa fecha) más los turnos ya
+    /// reservados. El frontend arma la grilla de horarios combinando todo
+    /// esto; acá solo resolvemos las reglas, igual que en el booking público.
+    /// </summary>
+    [HttpGet("dia")]
+    public async Task<IActionResult> GetDia([FromQuery] Guid odontologoId, [FromQuery] DateTime fecha, CancellationToken ct)
+    {
+        var odontologo = await _db.Odontologos.FirstOrDefaultAsync(o => o.Id == odontologoId, ct);
+        if (odontologo is null) return BadRequest(new { message = "Odontólogo inválido." });
+
+        var fechaSolo = fecha.Date;
+        var diaSemana = fechaSolo.DayOfWeek.ADiaSemana();
+
+        var reglas = await _db.Disponibilidades
+            .Where(d => d.OdontologoId == odontologoId &&
+                ((d.Tipo == TipoDisponibilidad.Recurrente && d.DiaSemana == diaSemana) ||
+                 (d.Tipo == TipoDisponibilidad.Excepcion && d.Fecha != null && d.Fecha.Value.Date == fechaSolo)))
+            .ToListAsync(ct);
+
+        var reglaTodoElDiaBloqueado = reglas
+            .FirstOrDefault(r => r.Tipo == TipoDisponibilidad.Excepcion && r.Bloqueado && r.TodoElDia);
+
+        var ventanas = reglas
+            .Where(r => !r.Bloqueado && !r.TodoElDia && r.HoraInicio != null && r.HoraFin != null)
+            .Select(r => new VentanaResponse(r.HoraInicio!.Value.ToString(@"hh\:mm"), r.HoraFin!.Value.ToString(@"hh\:mm")))
+            .ToList();
+
+        var bloqueos = reglas
+            .Where(r => r.Bloqueado && !r.TodoElDia && r.HoraInicio != null && r.HoraFin != null)
+            .Select(r => new BloqueoResponse(r.Id, r.HoraInicio!.Value.ToString(@"hh\:mm"), r.HoraFin!.Value.ToString(@"hh\:mm")))
+            .ToList();
+
+        var turnosDelDia = await _db.Turnos
+            .Where(t => t.OdontologoId == odontologoId && t.FechaHora.Date == fechaSolo && t.Estado != TurnoEstado.Cancelado)
+            .OrderBy(t => t.FechaHora)
+            .Select(t => new
+            {
+                t.Id,
+                t.FechaHora,
+                t.PacienteId,
+                PacienteNombre = t.Paciente.Nombre,
+                t.TipoTratamientoId,
+                t.DuracionMinutos,
+                Estado = t.Estado.ToString()
+            })
+            .ToListAsync(ct);
+
+        var turnos = turnosDelDia.Select(t => new TurnoDelDiaResponse(
+            t.Id,
+            t.FechaHora.ToString("HH:mm"),
+            t.FechaHora.AddMinutes(t.DuracionMinutos).ToString("HH:mm"),
+            t.PacienteId,
+            t.PacienteNombre,
+            t.TipoTratamientoId,
+            t.DuracionMinutos,
+            t.Estado)).ToList();
+
+        return Ok(new
+        {
+            fecha = fechaSolo.ToString("yyyy-MM-dd"),
+            todoElDiaBloqueado = reglaTodoElDiaBloqueado is not null,
+            todoElDiaBloqueadoId = reglaTodoElDiaBloqueado?.Id,
+            ventanas,
+            bloqueos,
+            turnos
+        });
+    }
+
+    public record ReservarTurnoManualRequest(
+        Guid PacienteId,
+        Guid OdontologoId,
+        Guid? TipoTratamientoId,
+        DateTime FechaHora,
+        // Si viene, pisa la duración del tipo de tratamiento (o el default
+        // de 30 min): permite elegir "hasta qué hora" a mano en la agenda.
+        int? DuracionMinutos);
 
     /// <summary>
     /// Reserva manual desde el consultorio (por ejemplo, un paciente que
@@ -79,6 +170,13 @@ public class TurnosController : ControllerBase
             var tipoTratamiento = await _db.TiposTratamiento.FirstOrDefaultAsync(t => t.Id == ttId, ct);
             if (tipoTratamiento is null) return BadRequest(new { message = "Tipo de tratamiento inválido." });
             duracionMinutos = tipoTratamiento.DuracionMinutos;
+        }
+
+        if (request.DuracionMinutos is int duracionManual)
+        {
+            if (duracionManual <= 0)
+                return BadRequest(new { message = "La duración tiene que ser mayor a 0." });
+            duracionMinutos = duracionManual;
         }
 
         var fin = request.FechaHora.AddMinutes(duracionMinutos);
