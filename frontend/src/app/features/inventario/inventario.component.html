@@ -1,0 +1,148 @@
+<div class="header">
+  <h1>Inventario</h1>
+  <button type="button" (click)="mostrarForm() ? cancelar() : abrirNuevo()">
+    {{ mostrarForm() ? 'Cancelar' : '+ Nuevo insumo' }}
+  </button>
+</div>
+
+@if (cantidadAlertas() > 0) {
+  <div class="alerta-stock">
+    ⚠️ {{ cantidadAlertas() }} insumo(s) con stock por debajo del mínimo.
+  </div>
+}
+
+@if (mostrarForm()) {
+  <form class="form-insumo" (ngSubmit)="guardar()" #f="ngForm">
+    <div class="fila-form">
+      <label>Nombre*</label>
+      <input type="text" name="nombre" [(ngModel)]="form.nombre" required placeholder="Ej: Anestesia lidocaína" />
+    </div>
+    <div class="fila-form">
+      <label>Categoría*</label>
+      <select name="categoria" [(ngModel)]="form.categoria">
+        @for (c of categorias; track c) {
+          <option [value]="c">{{ c }}</option>
+        }
+      </select>
+    </div>
+    <div class="fila-form">
+      <label>Unidad*</label>
+      <input type="text" name="unidad" [(ngModel)]="form.unidad" placeholder="Ej: cajas, unidades, ampollas" />
+    </div>
+    <div class="fila-form">
+      <label>Stock mínimo*</label>
+      <input type="number" min="0" step="0.01" name="stockMinimo" [(ngModel)]="form.stockMinimo" required />
+    </div>
+    @if (!editandoId()) {
+      <div class="fila-form">
+        <label>Stock inicial</label>
+        <input type="number" min="0" step="0.01" name="stockInicial" [(ngModel)]="form.stockInicial" />
+      </div>
+    } @else {
+      <div class="fila-form checkbox">
+        <label><input type="checkbox" name="activo" [(ngModel)]="form.activo" /> Activo</label>
+      </div>
+    }
+
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
+
+    <button type="submit" [disabled]="f.invalid || guardando()">
+      {{ guardando() ? 'Guardando...' : (editandoId() ? 'Guardar cambios' : 'Crear insumo') }}
+    </button>
+  </form>
+}
+
+<div class="filtros">
+  <select [ngModel]="filtroCategoria()" (ngModelChange)="filtroCategoria.set($event)">
+    <option value="Todas">Todas las categorías</option>
+    @for (c of categorias; track c) {
+      <option [value]="c">{{ c }}</option>
+    }
+  </select>
+  <label class="check-stock-bajo">
+    <input type="checkbox" [ngModel]="soloStockBajo()" (ngModelChange)="soloStockBajo.set($event)" />
+    Solo con stock bajo
+  </label>
+</div>
+
+@if (cargando()) {
+  <p>Cargando...</p>
+} @else if (insumosFiltrados().length === 0) {
+  <p>Sin insumos cargados.</p>
+} @else {
+  <table class="tabla-insumos">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Categoría</th>
+        <th>Stock actual</th>
+        <th>Stock mínimo</th>
+        <th>Estado</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (i of insumosFiltrados(); track i.id) {
+        <tr [class.inactivo]="!i.activo">
+          <td>{{ i.nombre }}</td>
+          <td>{{ i.categoria }}</td>
+          <td>{{ i.stockActual | number: '1.0-2' }} {{ i.unidad }}</td>
+          <td>{{ i.stockMinimo | number: '1.0-2' }} {{ i.unidad }}</td>
+          <td>
+            @if (!i.activo) {
+              <span class="tag tag-inactivo">Inactivo</span>
+            } @else if (i.stockBajo) {
+              <span class="tag tag-bajo">Stock bajo</span>
+            } @else {
+              <span class="tag tag-ok">OK</span>
+            }
+          </td>
+          <td class="acciones">
+            <button type="button" (click)="abrirMovimientos(i)">Movimientos</button>
+            <button type="button" (click)="editar(i)">Editar</button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}
+
+@if (movimientosDe()) {
+  <div class="overlay" (click)="cerrarMovimientos()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>{{ movimientosDe()!.nombre }}</h2>
+        <button type="button" (click)="cerrarMovimientos()">✕</button>
+      </div>
+      <p class="stock-actual">
+        Stock actual: <strong>{{ movimientosDe()!.stockActual | number: '1.0-2' }} {{ movimientosDe()!.unidad }}</strong>
+      </p>
+
+      <div class="form-movimiento">
+        <input type="number" min="0" step="0.01" [(ngModel)]="cantidadMovimiento" placeholder="Cantidad" />
+        <input type="text" [(ngModel)]="motivoMovimiento" placeholder="Motivo (opcional)" />
+        <button type="button" class="btn-entrada" [disabled]="guardandoMovimiento()" (click)="registrarMovimiento(1)">+ Entrada</button>
+        <button type="button" class="btn-salida" [disabled]="guardandoMovimiento()" (click)="registrarMovimiento(-1)">− Salida</button>
+      </div>
+      @if (errorMovimiento()) {
+        <p class="error">{{ errorMovimiento() }}</p>
+      }
+
+      @if (movimientos().length === 0) {
+        <p>Sin movimientos registrados.</p>
+      } @else {
+        <ul class="lista-movimientos">
+          @for (m of movimientos(); track m.id) {
+            <li [class.entrada]="m.cantidad > 0" [class.salida]="m.cantidad < 0">
+              <span>{{ m.fecha | date: 'short' }}</span>
+              <span class="cantidad">{{ m.cantidad > 0 ? '+' : '' }}{{ m.cantidad }}</span>
+              <span class="motivo">{{ m.motivo || '-' }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  </div>
+}

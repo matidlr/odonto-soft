@@ -32,6 +32,8 @@ public class AppDbContext : DbContext
     public DbSet<Presupuesto> Presupuestos => Set<Presupuesto>();
     public DbSet<ItemPresupuesto> ItemsPresupuesto => Set<ItemPresupuesto>();
     public DbSet<Cobro> Cobros => Set<Cobro>();
+    public DbSet<Insumo> Insumos => Set<Insumo>();
+    public DbSet<MovimientoStock> MovimientosStock => Set<MovimientoStock>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -218,6 +220,28 @@ public class AppDbContext : DbContext
             b.HasIndex(c => new { c.PacienteId, c.Fecha });
 
             b.HasQueryFilter(c => _tenantContext.EsSuperAdmin || c.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<Insumo>(b =>
+        {
+            b.Property(i => i.StockActual).HasColumnType("decimal(10,2)");
+            b.Property(i => i.StockMinimo).HasColumnType("decimal(10,2)");
+
+            b.HasOne(i => i.Tenant).WithMany().HasForeignKey(i => i.TenantId).OnDelete(DeleteBehavior.Restrict);
+
+            b.HasQueryFilter(i => _tenantContext.EsSuperAdmin || i.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<MovimientoStock>(b =>
+        {
+            b.Property(m => m.Cantidad).HasColumnType("decimal(10,2)");
+
+            b.HasOne(m => m.Tenant).WithMany().HasForeignKey(m => m.TenantId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne(m => m.Insumo).WithMany().HasForeignKey(m => m.InsumoId).OnDelete(DeleteBehavior.Cascade);
+
+            b.HasIndex(m => new { m.InsumoId, m.Fecha });
+
+            b.HasQueryFilter(m => _tenantContext.EsSuperAdmin || m.TenantId == _tenantContext.TenantId);
         });
     }
 }
