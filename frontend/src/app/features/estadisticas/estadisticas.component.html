@@ -1,0 +1,111 @@
+<h1>Estadísticas</h1>
+
+<form class="filtro" (ngSubmit)="cargar()">
+  <div class="fila-form">
+    <label>Desde</label>
+    <input type="date" name="desde" [(ngModel)]="desde" />
+  </div>
+  <div class="fila-form">
+    <label>Hasta</label>
+    <input type="date" name="hasta" [(ngModel)]="hasta" />
+  </div>
+  <button type="submit">Aplicar</button>
+</form>
+
+@if (cargando()) {
+  <p>Cargando...</p>
+} @else if (datos()) {
+  <div class="tarjetas">
+    <div class="tarjeta">
+      <span class="etiqueta">Pacientes nuevos</span>
+      <span class="valor">{{ datos()!.pacientesNuevos }}</span>
+    </div>
+    <div class="tarjeta">
+      <span class="etiqueta">Turnos en el período</span>
+      <span class="valor">{{ datos()!.cantidadTurnos }}</span>
+    </div>
+    <div class="tarjeta">
+      <span class="etiqueta">Cancelaciones</span>
+      <span class="valor">{{ datos()!.cancelaciones }}</span>
+    </div>
+    <div class="tarjeta">
+      <span class="etiqueta">Facturación del período</span>
+      <span class="valor">{{ datos()!.facturacionTotalPeriodo | currency: 'ARS' : 'symbol-narrow' : '1.0-2' }}</span>
+    </div>
+  </div>
+
+  <div class="fila-detalle">
+    <div class="panel">
+      <h2>Turnos por estado</h2>
+      @if (datos()!.turnosPorEstado.length === 0) {
+        <p>Sin turnos en el período.</p>
+      } @else {
+        <ul class="lista-simple">
+          @for (t of datos()!.turnosPorEstado; track t.estado) {
+            <li><span>{{ t.estado }}</span><strong>{{ t.cantidad }}</strong></li>
+          }
+        </ul>
+      }
+    </div>
+
+    <div class="panel">
+      <h2>Odontólogos con más consultas</h2>
+      <p class="ayuda">Últimos 6 meses, turnos completados.</p>
+      @if (datos()!.odontologosConMasConsultas.length === 0) {
+        <p>Sin datos todavía.</p>
+      } @else {
+        <ul class="ranking">
+          @for (o of datos()!.odontologosConMasConsultas; track o.odontologoId) {
+            <li>
+              <span class="nombre">{{ o.nombre }}</span>
+              <div class="barra-fondo">
+                <div class="barra" [style.width.%]="(o.cantidad / maxRankingOdontologo()) * 100"></div>
+              </div>
+              <span class="cantidad">{{ o.cantidad }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  </div>
+
+  <div class="fila-detalle">
+    <div class="panel">
+      <h2>Tratamientos más realizados</h2>
+      <p class="ayuda">Últimos 6 meses, turnos completados.</p>
+      @if (datos()!.tratamientosMasRealizados.length === 0) {
+        <p>Sin datos todavía.</p>
+      } @else {
+        <ul class="ranking">
+          @for (t of datos()!.tratamientosMasRealizados; track t.nombre) {
+            <li>
+              <span class="nombre">{{ t.nombre }}</span>
+              <div class="barra-fondo">
+                <div class="barra" [style.width.%]="(t.cantidad / maxRankingTratamiento()) * 100"></div>
+              </div>
+              <span class="cantidad">{{ t.cantidad }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+
+    <div class="panel">
+      <h2>Facturación mensual</h2>
+      <p class="ayuda">Últimos 6 meses.</p>
+      @if (datos()!.facturacionPorMes.length === 0) {
+        <p>Sin cobros registrados todavía.</p>
+      } @else {
+        <div class="grafico-barras">
+          @for (m of datos()!.facturacionPorMes; track m.anio + '-' + m.mes) {
+            <div class="columna">
+              <div class="barra-vertical" [style.height.%]="(m.total / maxFacturacionMes()) * 100"></div>
+              <span class="etiqueta-mes">{{ nombreMes(m.anio, m.mes) }}</span>
+              <span class="etiqueta-total">{{ m.total | currency: 'ARS' : 'symbol-narrow' : '1.0-0' }}</span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+}

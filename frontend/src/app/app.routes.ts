@@ -73,6 +73,13 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'estadisticas',
+        loadComponent: () =>
+          import('./features/estadisticas/estadisticas.component').then(
+            (m) => m.EstadisticasComponent
+          )
+      },
+      {
         path: 'tratamientos',
         loadComponent: () =>
           import('./features/tratamientos/tratamientos.component').then(
