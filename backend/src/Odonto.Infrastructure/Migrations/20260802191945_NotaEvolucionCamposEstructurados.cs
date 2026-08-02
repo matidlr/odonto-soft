@@ -10,10 +10,6 @@ namespace Odonto.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "Contenido",
-                table: "NotasEvolucion");
-
             migrationBuilder.AddColumn<string>(
                 name: "Diagnostico",
                 table: "NotasEvolucion",
@@ -55,6 +51,15 @@ namespace Odonto.Infrastructure.Migrations
                 type: "longtext",
                 nullable: true)
                 .Annotation("MySql:CharSet", "utf8mb4");
+
+            // Preservamos el contenido de las notas ya cargadas: pasa a
+            // mostrarse en "Observaciones" antes de borrar la columna vieja.
+            migrationBuilder.Sql(
+                "UPDATE NotasEvolucion SET Observaciones = Contenido WHERE Contenido IS NOT NULL AND Contenido <> '';");
+
+            migrationBuilder.DropColumn(
+                name: "Contenido",
+                table: "NotasEvolucion");
         }
 
         /// <inheritdoc />

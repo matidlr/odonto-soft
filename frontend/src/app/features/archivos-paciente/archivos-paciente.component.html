@@ -1,0 +1,106 @@
+<a class="volver" [routerLink]="['/pacientes']">← Volver a pacientes</a>
+
+<h1>Archivos{{ paciente() ? ' — ' + paciente()!.nombre : '' }}</h1>
+
+@if (cargando()) {
+  <p>Cargando...</p>
+} @else {
+  <form class="form-subir" (ngSubmit)="subir()">
+    <div class="fila-form">
+      <label>Archivo*</label>
+      <input id="inputArchivo" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" (change)="onSeleccionarArchivo($event)" />
+    </div>
+    <div class="fila-form">
+      <label>Categoría</label>
+      <select name="categoria" [(ngModel)]="categoriaNueva">
+        @for (c of categorias; track c) {
+          <option [value]="c">{{ etiquetaCategoria[c] }}</option>
+        }
+      </select>
+    </div>
+    <div class="fila-form">
+      <label>Descripción</label>
+      <input name="descripcion" type="text" [(ngModel)]="descripcionNueva" placeholder="Opcional" />
+    </div>
+
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
+
+    <button type="submit" [disabled]="!archivoSeleccionado || subiendo()">
+      {{ subiendo() ? 'Subiendo...' : 'Subir archivo' }}
+    </button>
+  </form>
+
+  <div class="filtros">
+    <button
+      type="button"
+      class="chip"
+      [class.activo]="filtroCategoria() === 'Todas'"
+      (click)="filtroCategoria.set('Todas')"
+    >
+      Todas
+    </button>
+    @for (c of categorias; track c) {
+      <button
+        type="button"
+        class="chip"
+        [class.activo]="filtroCategoria() === c"
+        (click)="filtroCategoria.set(c)"
+      >
+        {{ etiquetaCategoria[c] }}
+      </button>
+    }
+  </div>
+
+  @if (archivosFiltrados().length === 0) {
+    <p>Sin archivos cargados{{ filtroCategoria() !== 'Todas' ? ' en esta categoría' : '' }}.</p>
+  } @else {
+    <div class="grilla-archivos">
+      @for (a of archivosFiltrados(); track a.id) {
+        <div class="tarjeta-archivo">
+          <button type="button" class="ver" (click)="abrirVisor(a)">
+            @if (esImagen(a)) {
+              <span class="icono">🖼️</span>
+            } @else {
+              <span class="icono">📄</span>
+            }
+            <span class="nombre">{{ a.nombreOriginal }}</span>
+          </button>
+          <div class="meta">
+            <span class="tag-categoria">{{ etiquetaCategoria[a.categoria] }}</span>
+            <span>{{ a.fechaSubida | date: 'short' }}</span>
+            <span>{{ formatearTamanio(a.tamanioBytes) }}</span>
+          </div>
+          @if (a.descripcion) {
+            <p class="descripcion">{{ a.descripcion }}</p>
+          }
+          <button type="button" class="btn-borrar" [disabled]="borrandoId() === a.id" (click)="borrar(a)">
+            {{ borrandoId() === a.id ? 'Borrando...' : 'Borrar' }}
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  @if (archivoAbierto()) {
+    <div class="visor-overlay" (click)="cerrarVisor()">
+      <div class="visor-contenido" (click)="$event.stopPropagation()">
+        <div class="visor-header">
+          <span>{{ archivoAbierto()!.nombre }}</span>
+          <button type="button" (click)="cerrarVisor()">✕</button>
+        </div>
+        @if (archivoAbierto()!.esPrevisualizable) {
+          @if (archivoAbierto()!.contentType === 'application/pdf') {
+            <iframe [src]="urlSegura(archivoAbierto()!.url)" class="visor-pdf"></iframe>
+          } @else {
+            <img [src]="archivoAbierto()!.url" class="visor-imagen" />
+          }
+        } @else {
+          <p>Este tipo de archivo no se puede previsualizar.</p>
+        }
+        <button type="button" (click)="descargarDesdeVisor()">Descargar</button>
+      </div>
+    </div>
+  }
+}

@@ -28,6 +28,7 @@ public class AppDbContext : DbContext
     public DbSet<FichaMedica> FichasMedicas => Set<FichaMedica>();
     public DbSet<NotaEvolucion> NotasEvolucion => Set<NotaEvolucion>();
     public DbSet<Plan> Planes => Set<Plan>();
+    public DbSet<ArchivoPaciente> ArchivosPaciente => Set<ArchivoPaciente>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -168,6 +169,16 @@ public class AppDbContext : DbContext
             b.HasIndex(n => new { n.PacienteId, n.Fecha });
 
             b.HasQueryFilter(n => _tenantContext.EsSuperAdmin || n.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<ArchivoPaciente>(b =>
+        {
+            b.HasOne(a => a.Tenant).WithMany().HasForeignKey(a => a.TenantId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne(a => a.Paciente).WithMany().HasForeignKey(a => a.PacienteId).OnDelete(DeleteBehavior.Cascade);
+
+            b.HasIndex(a => new { a.PacienteId, a.Categoria });
+
+            b.HasQueryFilter(a => _tenantContext.EsSuperAdmin || a.TenantId == _tenantContext.TenantId);
         });
     }
 }
