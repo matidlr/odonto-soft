@@ -10,4 +10,5 @@ public class TipoTratamiento
     public string Nombre { get; set; } = string.Empty;
     public int DuracionMinutos { get; set; }
     public decimal PrecioBase { get; set; }
+    public string? Observaciones { get; set; }
 }

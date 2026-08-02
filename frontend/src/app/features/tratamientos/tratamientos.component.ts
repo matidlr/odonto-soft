@@ -17,9 +17,12 @@ export class TratamientosComponent implements OnInit {
   guardando = signal(false);
   error = signal<string | null>(null);
 
+  editandoId = signal<string | null>(null);
+
   nombre = '';
   duracionMinutos = 30;
   precioBase = 0;
+  observaciones = '';
 
   constructor(private tipoTratamientoService: TipoTratamientoService) {}
 
@@ -36,22 +39,52 @@ export class TratamientosComponent implements OnInit {
     }
   }
 
-  async crear(): Promise<void> {
+  abrirNuevo(): void {
+    this.editandoId.set(null);
+    this.nombre = '';
+    this.duracionMinutos = 30;
+    this.precioBase = 0;
+    this.observaciones = '';
+    this.error.set(null);
+    this.mostrarForm.set(true);
+  }
+
+  editar(t: TipoTratamiento): void {
+    this.editandoId.set(t.id);
+    this.nombre = t.nombre;
+    this.duracionMinutos = t.duracionMinutos;
+    this.precioBase = t.precioBase;
+    this.observaciones = t.observaciones ?? '';
+    this.error.set(null);
+    this.mostrarForm.set(true);
+  }
+
+  cancelar(): void {
+    this.mostrarForm.set(false);
+  }
+
+  async guardar(): Promise<void> {
     this.error.set(null);
     this.guardando.set(true);
     try {
-      await this.tipoTratamientoService.crear({
+      const datos = {
         nombre: this.nombre,
         duracionMinutos: this.duracionMinutos,
-        precioBase: this.precioBase
-      });
-      this.nombre = '';
-      this.duracionMinutos = 30;
-      this.precioBase = 0;
+        precioBase: this.precioBase,
+        observaciones: this.observaciones || undefined
+      };
+
+      const id = this.editandoId();
+      if (id) {
+        await this.tipoTratamientoService.editar(id, datos);
+      } else {
+        await this.tipoTratamientoService.crear(datos);
+      }
+
       this.mostrarForm.set(false);
       await this.cargar();
     } catch {
-      this.error.set('No se pudo crear el tipo de tratamiento.');
+      this.error.set('No se pudo guardar el tipo de tratamiento.');
     } finally {
       this.guardando.set(false);
     }

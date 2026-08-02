@@ -1,12 +1,12 @@
 <div class="header">
   <h1>Tipos de tratamiento</h1>
-  <button (click)="mostrarForm.set(!mostrarForm())">
+  <button (click)="mostrarForm() ? cancelar() : abrirNuevo()">
     {{ mostrarForm() ? 'Cancelar' : '+ Nuevo tipo' }}
   </button>
 </div>
 
 @if (mostrarForm()) {
-  <form class="form-tratamiento" (ngSubmit)="crear()" #form="ngForm">
+  <form class="form-tratamiento" (ngSubmit)="guardar()" #form="ngForm">
     <div class="fila">
       <label>Nombre*</label>
       <input name="nombre" type="text" [(ngModel)]="nombre" required placeholder="Ej: Limpieza" />
@@ -16,8 +16,12 @@
       <input name="duracion" type="number" min="5" step="5" [(ngModel)]="duracionMinutos" required />
     </div>
     <div class="fila">
-      <label>Precio base</label>
+      <label>Precio</label>
       <input name="precio" type="number" min="0" step="100" [(ngModel)]="precioBase" />
+    </div>
+    <div class="fila">
+      <label>Observaciones</label>
+      <textarea name="observaciones" [(ngModel)]="observaciones" rows="2"></textarea>
     </div>
 
     @if (error()) {
@@ -25,7 +29,7 @@
     }
 
     <button type="submit" [disabled]="form.invalid || guardando()">
-      {{ guardando() ? 'Guardando...' : 'Guardar' }}
+      {{ guardando() ? 'Guardando...' : (editandoId() ? 'Guardar cambios' : 'Guardar') }}
     </button>
   </form>
 }
@@ -40,7 +44,9 @@
       <tr>
         <th>Nombre</th>
         <th>Duración</th>
-        <th>Precio base</th>
+        <th>Precio</th>
+        <th>Observaciones</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
@@ -49,6 +55,8 @@
           <td>{{ t.nombre }}</td>
           <td>{{ t.duracionMinutos }} min</td>
           <td>{{ t.precioBase | number: '1.0-2' }}</td>
+          <td>{{ t.observaciones || '-' }}</td>
+          <td><button type="button" class="btn-editar" (click)="editar(t)">Editar</button></td>
         </tr>
       }
     </tbody>

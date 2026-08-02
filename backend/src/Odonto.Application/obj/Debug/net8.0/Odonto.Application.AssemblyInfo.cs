@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Odonto.Application")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+48dae2af22db83d8cb55e034472f90e6d6750423")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ea416d239046317824a2fb74187e9d4e24aa656a")]
 [assembly: System.Reflection.AssemblyProductAttribute("Odonto.Application")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Odonto.Application")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

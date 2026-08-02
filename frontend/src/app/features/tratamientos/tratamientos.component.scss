@@ -37,10 +37,12 @@
       margin-bottom: 0.25rem;
     }
 
-    input {
+    input,
+    textarea {
       padding: 0.5rem;
       border: 1px solid #ccc;
       border-radius: 6px;
+      font-family: inherit;
     }
   }
 
@@ -83,4 +85,14 @@
     font-size: 0.8rem;
     color: #555;
   }
+}
+
+.btn-editar {
+  padding: 0.3rem 0.7rem;
+  border: 1px solid #2563eb;
+  border-radius: 6px;
+  background: white;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 0.8rem;
 }

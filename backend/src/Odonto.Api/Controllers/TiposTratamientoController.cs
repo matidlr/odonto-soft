@@ -18,7 +18,7 @@ public class TiposTratamientoController : ControllerBase
         _db = db;
     }
 
-    public record CrearTipoTratamientoRequest(string Nombre, int DuracionMinutos, decimal PrecioBase);
+    public record CrearTipoTratamientoRequest(string Nombre, int DuracionMinutos, decimal PrecioBase, string? Observaciones);
 
     [HttpPost]
     public async Task<IActionResult> Crear(CrearTipoTratamientoRequest request, CancellationToken ct)
@@ -32,10 +32,29 @@ public class TiposTratamientoController : ControllerBase
             TenantId = tenantId,
             Nombre = request.Nombre,
             DuracionMinutos = request.DuracionMinutos,
-            PrecioBase = request.PrecioBase
+            PrecioBase = request.PrecioBase,
+            Observaciones = request.Observaciones
         };
 
         _db.TiposTratamiento.Add(tipo);
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new { tipo.Id });
+    }
+
+    public record EditarTipoTratamientoRequest(string Nombre, int DuracionMinutos, decimal PrecioBase, string? Observaciones);
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Editar(Guid id, EditarTipoTratamientoRequest request, CancellationToken ct)
+    {
+        var tipo = await _db.TiposTratamiento.FirstOrDefaultAsync(t => t.Id == id, ct);
+        if (tipo is null) return NotFound(new { message = "Tipo de tratamiento no encontrado." });
+
+        tipo.Nombre = request.Nombre;
+        tipo.DuracionMinutos = request.DuracionMinutos;
+        tipo.PrecioBase = request.PrecioBase;
+        tipo.Observaciones = request.Observaciones;
+
         await _db.SaveChangesAsync(ct);
 
         return Ok(new { tipo.Id });
@@ -45,7 +64,7 @@ public class TiposTratamientoController : ControllerBase
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {
         var tipos = await _db.TiposTratamiento
-            .Select(t => new { t.Id, t.Nombre, t.DuracionMinutos, t.PrecioBase })
+            .Select(t => new { t.Id, t.Nombre, t.DuracionMinutos, t.PrecioBase, t.Observaciones })
             .ToListAsync(ct);
 
         return Ok(tipos);

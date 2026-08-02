@@ -8,12 +8,21 @@ export interface TipoTratamiento {
   nombre: string;
   duracionMinutos: number;
   precioBase: number;
+  observaciones: string | null;
 }
 
 export interface CrearTipoTratamientoRequest {
   nombre: string;
   duracionMinutos: number;
   precioBase: number;
+  observaciones?: string;
+}
+
+export interface EditarTipoTratamientoRequest {
+  nombre: string;
+  duracionMinutos: number;
+  precioBase: number;
+  observaciones?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -27,6 +36,12 @@ export class TipoTratamientoService {
   crear(datos: CrearTipoTratamientoRequest): Promise<{ id: string }> {
     return firstValueFrom(
       this.http.post<{ id: string }>(`${API_BASE_URL}/tipos-tratamiento`, datos)
+    );
+  }
+
+  editar(id: string, datos: EditarTipoTratamientoRequest): Promise<{ id: string }> {
+    return firstValueFrom(
+      this.http.put<{ id: string }>(`${API_BASE_URL}/tipos-tratamiento/${id}`, datos)
     );
   }
 }
