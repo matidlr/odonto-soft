@@ -11,7 +11,9 @@ export type EstadoDiente =
   | 'Endodoncia'
   | 'Ausente'
   | 'Implante'
-  | 'Fracturado';
+  | 'Fracturado'
+  | 'Sellador'
+  | 'Ortodoncia';
 
 export type EstadoTratamiento = 'Planificado' | 'Realizado';
 

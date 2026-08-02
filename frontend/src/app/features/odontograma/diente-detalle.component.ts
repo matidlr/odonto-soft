@@ -21,7 +21,9 @@ const ESTADOS: EstadoDiente[] = [
   'Endodoncia',
   'Ausente',
   'Implante',
-  'Fracturado'
+  'Fracturado',
+  'Sellador',
+  'Ortodoncia'
 ];
 
 interface ArchivoAbierto {

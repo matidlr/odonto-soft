@@ -21,7 +21,9 @@ const ESTADOS: EstadoDiente[] = [
   'Endodoncia',
   'Ausente',
   'Implante',
-  'Fracturado'
+  'Fracturado',
+  'Sellador',
+  'Ortodoncia'
 ];
 
 const COLOR_POR_ESTADO: Record<EstadoDiente, string> = {
@@ -32,7 +34,9 @@ const COLOR_POR_ESTADO: Record<EstadoDiente, string> = {
   Endodoncia: '#9333ea',
   Ausente: '#9ca3af',
   Implante: '#16a34a',
-  Fracturado: '#ea580c'
+  Fracturado: '#ea580c',
+  Sellador: '#0d9488',
+  Ortodoncia: '#db2777'
 };
 
 // Rojo = ya realizado, azul = planificado/a realizar (misma convención

@@ -9,5 +9,7 @@ public enum EstadoDiente
     Endodoncia,
     Ausente,
     Implante,
-    Fracturado
+    Fracturado,
+    Sellador,
+    Ortodoncia
 }
