@@ -1,0 +1,166 @@
+<a class="volver" [routerLink]="['/pacientes']">← Volver a pacientes</a>
+
+<div class="header">
+  <h1>Consentimientos{{ paciente() ? ' — ' + paciente()!.nombre : '' }}</h1>
+  <button type="button" (click)="mostrarForm() ? cancelar() : abrirNuevo()">
+    {{ mostrarForm() ? 'Cancelar' : '+ Nuevo consentimiento' }}
+  </button>
+</div>
+
+@if (cargando()) {
+  <p>Cargando...</p>
+} @else {
+  @if (mostrarForm()) {
+    <div class="form-consentimiento">
+      <div class="fila-form">
+        <label>Tipo</label>
+        <select [(ngModel)]="tipo" (ngModelChange)="aplicarPlantilla()">
+          @for (t of tipos; track t) {
+            <option [value]="t">{{ etiquetaTipo[t] }}</option>
+          }
+        </select>
+      </div>
+      <div class="fila-form">
+        <label>Odontólogo</label>
+        <select [(ngModel)]="odontologoId">
+          <option value="">(sin especificar)</option>
+          @for (o of odontologos(); track o.id) {
+            <option [value]="o.id">{{ o.nombre }}</option>
+          }
+        </select>
+      </div>
+      <div class="fila-form">
+        <label>Título*</label>
+        <input type="text" [(ngModel)]="titulo" />
+      </div>
+      <div class="fila-form">
+        <label>Texto del consentimiento*</label>
+        <textarea [(ngModel)]="texto" rows="6"></textarea>
+      </div>
+
+      <h3>Firma (opcional en este momento)</h3>
+      <p class="ayuda">El paciente puede firmar ahora con el mouse o el dedo (en una tablet), o guardarse el consentimiento sin firmar y firmarlo después.</p>
+      <canvas
+        #canvasNuevo
+        width="500"
+        height="180"
+        class="canvas-firma"
+        (pointerdown)="iniciarTrazo($event, 'nuevo')"
+        (pointermove)="continuarTrazo($event, 'nuevo')"
+        (pointerup)="finalizarTrazo()"
+        (pointerleave)="finalizarTrazo()"
+      ></canvas>
+      <div class="acciones-firma">
+        <button type="button" (click)="limpiarFirma('nuevo')">Limpiar firma</button>
+        <input type="text" [(ngModel)]="nombreAclaratorio" placeholder="Nombre y aclaración de quien firma" />
+      </div>
+
+      @if (error()) {
+        <p class="error">{{ error() }}</p>
+      }
+
+      <div class="botones-guardar">
+        <button type="button" (click)="guardar(false)" [disabled]="guardando()">
+          Guardar sin firmar
+        </button>
+        <button type="button" class="primario" (click)="guardar(true)" [disabled]="guardando() || firmaVacia()">
+          {{ guardando() ? 'Guardando...' : 'Guardar y firmar' }}
+        </button>
+      </div>
+    </div>
+  }
+
+  @if (consentimientos().length === 0) {
+    <p>Sin consentimientos cargados todavía.</p>
+  } @else {
+    <table class="tabla-consentimientos">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Tipo</th>
+          <th>Título</th>
+          <th>Odontólogo</th>
+          <th>Estado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (c of consentimientos(); track c.id) {
+          <tr>
+            <td>{{ c.fechaCreacion | date: 'short' }}</td>
+            <td>{{ etiquetaTipo[c.tipo] }}</td>
+            <td>{{ c.titulo }}</td>
+            <td>{{ nombreOdontologo(c.odontologoId) || '-' }}</td>
+            <td>
+              @if (c.firmado) {
+                <span class="tag tag-firmado">Firmado</span>
+              } @else {
+                <span class="tag tag-pendiente">Sin firmar</span>
+              }
+            </td>
+            <td class="acciones">
+              <button type="button" (click)="abrirDetalle(c)">Ver</button>
+              @if (!c.firmado) {
+                <button type="button" (click)="abrirFirma(c)">Firmar</button>
+                <button type="button" class="btn-borrar" (click)="borrar(c)">Borrar</button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+}
+
+@if (firmando()) {
+  <div class="overlay" (click)="cerrarFirma()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Firmar: {{ firmando()!.titulo }}</h2>
+        <button type="button" (click)="cerrarFirma()">✕</button>
+      </div>
+      <canvas
+        #canvasExistente
+        width="440"
+        height="180"
+        class="canvas-firma"
+        (pointerdown)="iniciarTrazo($event, 'existente')"
+        (pointermove)="continuarTrazo($event, 'existente')"
+        (pointerup)="finalizarTrazo()"
+        (pointerleave)="finalizarTrazo()"
+      ></canvas>
+      <div class="acciones-firma">
+        <button type="button" (click)="limpiarFirma('existente')">Limpiar</button>
+        <input type="text" [(ngModel)]="nombreAclaratorioExistente" placeholder="Nombre y aclaración" />
+      </div>
+      @if (errorFirma()) {
+        <p class="error">{{ errorFirma() }}</p>
+      }
+      <button type="button" class="primario" [disabled]="guardandoFirma()" (click)="confirmarFirma()">
+        {{ guardandoFirma() ? 'Guardando...' : 'Confirmar firma' }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (verDetalle()) {
+  <div class="overlay" (click)="cerrarDetalle()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>{{ verDetalle()!.titulo }}</h2>
+        <button type="button" (click)="cerrarDetalle()">✕</button>
+      </div>
+      <p class="tipo-detalle">{{ etiquetaTipo[verDetalle()!.tipo] }} · {{ verDetalle()!.fechaCreacion | date: 'medium' }}</p>
+      <p class="texto-detalle">{{ verDetalle()!.texto }}</p>
+      @if (verDetalle()!.firmado) {
+        <h3>Firma</h3>
+        <img [src]="verDetalle()!.firmaBase64" class="imagen-firma" alt="Firma" />
+        <p class="aclaracion-firma">
+          {{ verDetalle()!.firmaNombreAclaratorio || '(sin aclaración)' }} — {{ verDetalle()!.fechaFirma | date: 'medium' }}
+        </p>
+      } @else {
+        <p class="sin-firmar">Todavía no está firmado.</p>
+      }
+    </div>
+  </div>
+}

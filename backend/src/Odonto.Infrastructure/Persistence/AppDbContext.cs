@@ -34,6 +34,7 @@ public class AppDbContext : DbContext
     public DbSet<Cobro> Cobros => Set<Cobro>();
     public DbSet<Insumo> Insumos => Set<Insumo>();
     public DbSet<MovimientoStock> MovimientosStock => Set<MovimientoStock>();
+    public DbSet<Consentimiento> Consentimientos => Set<Consentimiento>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -242,6 +243,17 @@ public class AppDbContext : DbContext
             b.HasIndex(m => new { m.InsumoId, m.Fecha });
 
             b.HasQueryFilter(m => _tenantContext.EsSuperAdmin || m.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<Consentimiento>(b =>
+        {
+            b.HasOne(c => c.Tenant).WithMany().HasForeignKey(c => c.TenantId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne(c => c.Paciente).WithMany().HasForeignKey(c => c.PacienteId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(c => c.Odontologo).WithMany().HasForeignKey(c => c.OdontologoId).OnDelete(DeleteBehavior.SetNull);
+
+            b.HasIndex(c => new { c.PacienteId, c.FechaCreacion });
+
+            b.HasQueryFilter(c => _tenantContext.EsSuperAdmin || c.TenantId == _tenantContext.TenantId);
         });
     }
 }

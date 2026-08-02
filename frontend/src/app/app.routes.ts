@@ -66,6 +66,13 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'pacientes/:pacienteId/consentimientos',
+        loadComponent: () =>
+          import('./features/consentimientos/consentimientos.component').then(
+            (m) => m.ConsentimientosComponent
+          )
+      },
+      {
         path: 'cobros',
         loadComponent: () =>
           import('./features/cobros/cobros-pendientes.component').then(

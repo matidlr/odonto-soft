@@ -75,6 +75,7 @@
         <th></th>
         <th></th>
         <th></th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
@@ -89,6 +90,7 @@
           <td><a [routerLink]="['/pacientes', p.id, 'archivos']">Archivos</a></td>
           <td><a [routerLink]="['/pacientes', p.id, 'presupuestos']">Presupuestos</a></td>
           <td><a [routerLink]="['/pacientes', p.id, 'cobros']">Cobros</a></td>
+          <td><a [routerLink]="['/pacientes', p.id, 'consentimientos']">Consentimientos</a></td>
           <td><button type="button" class="btn-editar" (click)="editar(p)">Editar</button></td>
         </tr>
       }
