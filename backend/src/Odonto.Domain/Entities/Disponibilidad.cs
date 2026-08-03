@@ -43,4 +43,10 @@ public class Disponibilidad
     // true = este rango bloquea (no se puede reservar)
     // false = este rango habilita (regla de trabajo normal, o apertura extra)
     public bool Bloqueado { get; set; }
+
+    // Borrado lógico: "eliminar" marca estas 3 columnas en vez de borrar la
+    // fila, para no perder el historial de reglas de horario.
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
 }

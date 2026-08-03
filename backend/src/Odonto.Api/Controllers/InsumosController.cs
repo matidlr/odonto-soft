@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Odonto.Api.Validacion;
 using Odonto.Domain.Common;
 using Odonto.Domain.Entities;
 using Odonto.Infrastructure.Persistence;
@@ -61,10 +62,14 @@ public class InsumosController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Crear(CrearInsumoRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Nombre))
-            return BadRequest(new { message = "El nombre es obligatorio." });
+        if (string.IsNullOrWhiteSpace(request.Nombre) || request.Nombre.Length > 150)
+            return BadRequest(new { message = "El nombre es obligatorio y no puede superar los 150 caracteres." });
+        if (request.Unidad?.Length > 30)
+            return BadRequest(new { message = "La unidad es demasiado larga." });
         if (request.StockMinimo < 0 || request.StockInicial < 0)
             return BadRequest(new { message = "El stock no puede ser negativo." });
+        if (!Validaciones.EsEnumValido(request.Categoria))
+            return BadRequest(new { message = "Categoría inválida." });
 
         var tenantIdClaim = User.FindFirst("tenant_id")?.Value;
         if (!Guid.TryParse(tenantIdClaim, out var tenantId))
@@ -103,10 +108,14 @@ public class InsumosController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Editar(Guid id, EditarInsumoRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Nombre))
-            return BadRequest(new { message = "El nombre es obligatorio." });
+        if (string.IsNullOrWhiteSpace(request.Nombre) || request.Nombre.Length > 150)
+            return BadRequest(new { message = "El nombre es obligatorio y no puede superar los 150 caracteres." });
+        if (request.Unidad?.Length > 30)
+            return BadRequest(new { message = "La unidad es demasiado larga." });
         if (request.StockMinimo < 0)
             return BadRequest(new { message = "El stock mínimo no puede ser negativo." });
+        if (!Validaciones.EsEnumValido(request.Categoria))
+            return BadRequest(new { message = "Categoría inválida." });
 
         var insumo = await _db.Insumos.FirstOrDefaultAsync(i => i.Id == id, ct);
         if (insumo is null) return NotFound(new { message = "Insumo no encontrado." });
@@ -147,6 +156,9 @@ public class InsumosController : ControllerBase
     {
         if (request.Cantidad == 0)
             return BadRequest(new { message = "La cantidad no puede ser 0." });
+
+        if (request.Motivo?.Length > 300)
+            return BadRequest(new { message = "El motivo es demasiado largo." });
 
         var insumo = await _db.Insumos.FirstOrDefaultAsync(i => i.Id == id, ct);
         if (insumo is null) return NotFound(new { message = "Insumo no encontrado." });

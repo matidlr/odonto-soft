@@ -115,7 +115,9 @@ public class AppDbContext : DbContext
             b.HasOne(d => d.Odontologo).WithMany().HasForeignKey(d => d.OdontologoId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne(d => d.Sede).WithMany().HasForeignKey(d => d.SedeId).OnDelete(DeleteBehavior.Cascade);
 
-            b.HasQueryFilter(d => _tenantContext.EsSuperAdmin || d.TenantId == _tenantContext.TenantId);
+            b.Property(d => d.IsDeleted).HasDefaultValue(false);
+
+            b.HasQueryFilter(d => (_tenantContext.EsSuperAdmin || d.TenantId == _tenantContext.TenantId) && !d.IsDeleted);
         });
 
         modelBuilder.Entity<TipoTratamiento>(b =>
@@ -210,7 +212,9 @@ public class AppDbContext : DbContext
 
             b.HasIndex(a => new { a.PacienteId, a.Categoria });
 
-            b.HasQueryFilter(a => _tenantContext.EsSuperAdmin || a.TenantId == _tenantContext.TenantId);
+            b.Property(a => a.IsDeleted).HasDefaultValue(false);
+
+            b.HasQueryFilter(a => (_tenantContext.EsSuperAdmin || a.TenantId == _tenantContext.TenantId) && !a.IsDeleted);
         });
 
         modelBuilder.Entity<Presupuesto>(b =>
@@ -221,7 +225,9 @@ public class AppDbContext : DbContext
 
             b.HasIndex(p => new { p.PacienteId, p.FechaCreacion });
 
-            b.HasQueryFilter(p => _tenantContext.EsSuperAdmin || p.TenantId == _tenantContext.TenantId);
+            b.Property(p => p.IsDeleted).HasDefaultValue(false);
+
+            b.HasQueryFilter(p => (_tenantContext.EsSuperAdmin || p.TenantId == _tenantContext.TenantId) && !p.IsDeleted);
         });
 
         modelBuilder.Entity<ItemPresupuesto>(b =>
@@ -246,7 +252,9 @@ public class AppDbContext : DbContext
 
             b.HasIndex(c => new { c.PacienteId, c.Fecha });
 
-            b.HasQueryFilter(c => _tenantContext.EsSuperAdmin || c.TenantId == _tenantContext.TenantId);
+            b.Property(c => c.IsDeleted).HasDefaultValue(false);
+
+            b.HasQueryFilter(c => (_tenantContext.EsSuperAdmin || c.TenantId == _tenantContext.TenantId) && !c.IsDeleted);
         });
 
         modelBuilder.Entity<Insumo>(b =>
@@ -279,7 +287,9 @@ public class AppDbContext : DbContext
 
             b.HasIndex(c => new { c.PacienteId, c.FechaCreacion });
 
-            b.HasQueryFilter(c => _tenantContext.EsSuperAdmin || c.TenantId == _tenantContext.TenantId);
+            b.Property(c => c.IsDeleted).HasDefaultValue(false);
+
+            b.HasQueryFilter(c => (_tenantContext.EsSuperAdmin || c.TenantId == _tenantContext.TenantId) && !c.IsDeleted);
         });
 
         modelBuilder.Entity<RegistroAuditoria>(b =>

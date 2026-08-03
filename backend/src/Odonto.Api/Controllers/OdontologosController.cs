@@ -25,6 +25,20 @@ public class OdontologosController : ControllerBase
         _db = db;
     }
 
+    /// <summary>Reglas comunes a Crear/Editar: no confiar en la validación de Angular.</summary>
+    private static string? ValidarDatosOdontologo(string nombre, string matricula, string? especialidad, string? colorAgenda)
+    {
+        if (string.IsNullOrWhiteSpace(nombre) || nombre.Length > 200)
+            return "El nombre es obligatorio y no puede superar los 200 caracteres.";
+        if (string.IsNullOrWhiteSpace(matricula) || matricula.Length > 50)
+            return "La matrícula es obligatoria y no puede superar los 50 caracteres.";
+        if (especialidad?.Length > 150)
+            return "La especialidad es demasiado larga.";
+        if (!string.IsNullOrWhiteSpace(colorAgenda) && !System.Text.RegularExpressions.Regex.IsMatch(colorAgenda, "^#[0-9a-fA-F]{6}$"))
+            return "El color de agenda tiene que ser un color hexadecimal (ej: #2563eb).";
+        return null;
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {
@@ -48,11 +62,8 @@ public class OdontologosController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Crear(CrearOdontologoRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Nombre))
-            return BadRequest(new { message = "El nombre es obligatorio." });
-
-        if (string.IsNullOrWhiteSpace(request.Matricula))
-            return BadRequest(new { message = "La matrícula es obligatoria." });
+        var errorCrear = ValidarDatosOdontologo(request.Nombre, request.Matricula, request.Especialidad, request.ColorAgenda);
+        if (errorCrear is not null) return BadRequest(new { message = errorCrear });
 
         var tenantIdClaim = User.FindFirst("tenant_id")?.Value;
         if (!Guid.TryParse(tenantIdClaim, out var tenantId))
@@ -105,10 +116,8 @@ public class OdontologosController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Editar(Guid id, EditarOdontologoRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Nombre))
-            return BadRequest(new { message = "El nombre es obligatorio." });
-        if (string.IsNullOrWhiteSpace(request.Matricula))
-            return BadRequest(new { message = "La matrícula es obligatoria." });
+        var errorEditar = ValidarDatosOdontologo(request.Nombre, request.Matricula, request.Especialidad, request.ColorAgenda);
+        if (errorEditar is not null) return BadRequest(new { message = errorEditar });
 
         var odontologo = await _db.Odontologos.FirstOrDefaultAsync(o => o.Id == id, ct);
         if (odontologo is null) return NotFound(new { message = "Odontólogo no encontrado." });

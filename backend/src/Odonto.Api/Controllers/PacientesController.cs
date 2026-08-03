@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Odonto.Api.Validacion;
 using Odonto.Domain.Entities;
 using Odonto.Infrastructure.Persistence;
 
@@ -30,6 +31,27 @@ public class PacientesController : ControllerBase
     {
         var claim = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
         return Guid.TryParse(claim, out var id) ? id : null;
+    }
+
+    /// <summary>
+    /// Reglas comunes a Crear/Editar: nunca confiar en que el formulario de
+    /// Angular ya validó esto, porque cualquiera puede llamar a la API
+    /// directamente. No valida OdontologoPrincipalId (necesita ir a la DB,
+    /// se hace aparte en cada acción).
+    /// </summary>
+    private static string? ValidarDatosPaciente(string nombre, string? dni, string? telefono, string? email, DateTime? fechaNacimiento)
+    {
+        if (string.IsNullOrWhiteSpace(nombre) || nombre.Length > 200)
+            return "El nombre es obligatorio y no puede superar los 200 caracteres.";
+        if (dni?.Length > 30)
+            return "El DNI es demasiado largo.";
+        if (telefono?.Length > 30)
+            return "El teléfono es demasiado largo.";
+        if (!string.IsNullOrWhiteSpace(email) && !Validaciones.EsEmailValido(email))
+            return "El email no tiene un formato válido.";
+        if (fechaNacimiento is DateTime f && (f.Date > DateTime.UtcNow.Date || f.Year < 1900))
+            return "La fecha de nacimiento no es válida.";
+        return null;
     }
 
     [HttpGet]
@@ -73,8 +95,14 @@ public class PacientesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Crear(CrearPacienteRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Nombre))
-            return BadRequest(new { message = "El nombre es obligatorio." });
+        var error = ValidarDatosPaciente(request.Nombre, request.Dni, request.Telefono, request.Email, request.FechaNacimiento);
+        if (error is not null) return BadRequest(new { message = error });
+
+        if (request.OdontologoPrincipalId is Guid odontologoPrincipalId)
+        {
+            var existeOdontologo = await _db.Odontologos.AnyAsync(o => o.Id == odontologoPrincipalId, ct);
+            if (!existeOdontologo) return BadRequest(new { message = "Odontólogo principal inválido." });
+        }
 
         var tenantIdClaim = User.FindFirst("tenant_id")?.Value;
         if (!Guid.TryParse(tenantIdClaim, out var tenantId))
@@ -108,8 +136,14 @@ public class PacientesController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Editar(Guid id, EditarPacienteRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Nombre))
-            return BadRequest(new { message = "El nombre es obligatorio." });
+        var error = ValidarDatosPaciente(request.Nombre, request.Dni, request.Telefono, request.Email, request.FechaNacimiento);
+        if (error is not null) return BadRequest(new { message = error });
+
+        if (request.OdontologoPrincipalId is Guid odontologoPrincipalId)
+        {
+            var existeOdontologo = await _db.Odontologos.AnyAsync(o => o.Id == odontologoPrincipalId, ct);
+            if (!existeOdontologo) return BadRequest(new { message = "Odontólogo principal inválido." });
+        }
 
         var paciente = await _db.Pacientes.FirstOrDefaultAsync(p => p.Id == id, ct);
         if (paciente is null) return NotFound();

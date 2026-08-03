@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Odonto.Api.Validacion;
 using Odonto.Application.Agenda;
 using Odonto.Domain.Common;
 using Odonto.Domain.Entities;
@@ -183,6 +184,12 @@ public class TurnosController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Crear(ReservarTurnoManualRequest request, CancellationToken ct)
     {
+        // No se bloquean fechas pasadas (el consultorio a veces carga un
+        // turno que ya pasó, ej. un paciente que vino sin sacar cita antes),
+        // pero sí se descarta cualquier cosa claramente inválida.
+        if (request.FechaHora.Year < 2000 || request.FechaHora > DateTime.UtcNow.AddYears(2))
+            return BadRequest(new { message = "La fecha del turno no es válida." });
+
         var paciente = await _db.Pacientes.FirstOrDefaultAsync(p => p.Id == request.PacienteId, ct);
         if (paciente is null) return BadRequest(new { message = "Paciente inválido." });
 
@@ -221,6 +228,12 @@ public class TurnosController : ControllerBase
         if (!Guid.TryParse(tenantIdClaim, out var tenantId))
             return BadRequest(new { message = "No se pudo determinar el tenant del usuario." });
 
+        if (request.SedeId is Guid sedeIdPedida)
+        {
+            var sedeValida = await _db.Sedes.AnyAsync(s => s.Id == sedeIdPedida && s.OdontologoId == request.OdontologoId, ct);
+            if (!sedeValida) return BadRequest(new { message = "Sede inválida para este odontólogo." });
+        }
+
         var sedeId = await ResolverSedeId(request.OdontologoId, request.SedeId, ct);
 
         var turno = new Turno
@@ -257,6 +270,9 @@ public class TurnosController : ControllerBase
     [HttpPut("{id}/estado")]
     public async Task<IActionResult> CambiarEstado(Guid id, CambiarEstadoRequest request, CancellationToken ct)
     {
+        if (!Validaciones.EsEnumValido(request.Estado))
+            return BadRequest(new { message = "Estado inválido." });
+
         var turno = await _db.Turnos.FindAsync(new object[] { id }, ct);
         if (turno is null) return NotFound();
 

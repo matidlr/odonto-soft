@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Odonto.Api.Validacion;
 using Odonto.Domain.Common;
 using Odonto.Domain.Entities;
 using Odonto.Infrastructure.Persistence;
@@ -172,6 +173,18 @@ public class OdontogramaController : ControllerBase
     {
         if (!NumerosFdi.Contains(request.NumeroFdi))
             return BadRequest(new { message = "NumeroFdi inválido. Debe ser una pieza permanente (11-18, 21-28, 31-38, 41-48) o temporal (51-55, 61-65, 71-75, 81-85)." });
+
+        if (!Validaciones.EsEnumValido(request.Estado))
+            return BadRequest(new { message = "Estado de diente inválido." });
+
+        if (!Validaciones.EsEnumValido(request.EstadoTratamiento))
+            return BadRequest(new { message = "Estado de tratamiento inválido." });
+
+        if (request.Tratamiento?.Length > 300)
+            return BadRequest(new { message = "El texto de tratamiento es demasiado largo." });
+
+        if (request.Nota?.Length > 1000)
+            return BadRequest(new { message = "La nota es demasiado larga." });
 
         var paciente = await _db.Pacientes.FirstOrDefaultAsync(p => p.Id == pacienteId, ct);
         if (paciente is null) return NotFound(new { message = "Paciente no encontrado." });

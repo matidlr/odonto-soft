@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Odonto.Api.Validacion;
 using Odonto.Application.Common.Interfaces;
 using Odonto.Domain.Common;
 using Odonto.Domain.Entities;
@@ -65,6 +66,28 @@ public class AuthController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
             return BadRequest(new { message = "La contraseña debe tener al menos 8 caracteres." });
+
+        if (string.IsNullOrWhiteSpace(request.NombreClinica) || request.NombreClinica.Length > 200)
+            return BadRequest(new { message = "El nombre de la clínica es obligatorio y no puede superar los 200 caracteres." });
+
+        if (string.IsNullOrWhiteSpace(request.NombreOdontologo) || request.NombreOdontologo.Length > 200)
+            return BadRequest(new { message = "El nombre del odontólogo es obligatorio y no puede superar los 200 caracteres." });
+
+        if (string.IsNullOrWhiteSpace(request.Matricula) || request.Matricula.Length > 50)
+            return BadRequest(new { message = "La matrícula es obligatoria y no puede superar los 50 caracteres." });
+
+        if (!Validaciones.EsEmailValido(request.Email))
+            return BadRequest(new { message = "El email no tiene un formato válido." });
+
+        // El slug queda expuesto en la URL pública (/r/{slug}), así que se
+        // restringe a algo que no rompa el routing ni links compartidos:
+        // minúsculas, números y guiones medios, sin espacios ni símbolos.
+        if (string.IsNullOrWhiteSpace(request.Slug) ||
+            request.Slug.Length > 60 ||
+            !System.Text.RegularExpressions.Regex.IsMatch(request.Slug, "^[a-z0-9]+(-[a-z0-9]+)*$"))
+        {
+            return BadRequest(new { message = "El slug solo puede tener minúsculas, números y guiones medios (ej: clinica-sonrisas)." });
+        }
 
         if (await _db.Tenants.AnyAsync(t => t.Slug == request.Slug, ct))
             return Conflict(new { message = "Ese slug ya está en uso." });

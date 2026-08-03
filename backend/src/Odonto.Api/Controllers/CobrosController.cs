@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Odonto.Api.Validacion;
 using Odonto.Domain.Common;
 using Odonto.Domain.Entities;
 using Odonto.Infrastructure.Persistence;
@@ -18,10 +19,18 @@ namespace Odonto.Api.Controllers;
 public class CobrosController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly ILogger<CobrosController> _logger;
 
-    public CobrosController(AppDbContext db)
+    public CobrosController(AppDbContext db, ILogger<CobrosController> logger)
     {
         _db = db;
+        _logger = logger;
+    }
+
+    private Guid? UsuarioIdActual()
+    {
+        var claim = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+        return Guid.TryParse(claim, out var id) ? id : null;
     }
 
     public record CobroResponse(
@@ -90,6 +99,15 @@ public class CobrosController : ControllerBase
         if (request.Monto <= 0)
             return BadRequest(new { message = "El monto tiene que ser mayor a 0." });
 
+        if (!Validaciones.EsEnumValido(request.MedioPago))
+            return BadRequest(new { message = "Medio de pago inválido." });
+
+        if (request.Concepto?.Length > 500)
+            return BadRequest(new { message = "El concepto es demasiado largo." });
+
+        if (request.Fecha is DateTime fecha && (fecha > DateTime.UtcNow.AddDays(1) || fecha.Year < 2000))
+            return BadRequest(new { message = "La fecha del cobro no es válida." });
+
         var paciente = await _db.Pacientes.FirstOrDefaultAsync(p => p.Id == pacienteId, ct);
         if (paciente is null) return NotFound(new { message = "Paciente no encontrado." });
 
@@ -134,8 +152,13 @@ public class CobrosController : ControllerBase
         var cobro = await _db.Cobros.FirstOrDefaultAsync(c => c.Id == id, ct);
         if (cobro is null) return NotFound();
 
-        _db.Cobros.Remove(cobro);
+        cobro.IsDeleted = true;
+        cobro.DeletedAt = DateTime.UtcNow;
+        cobro.DeletedBy = UsuarioIdActual();
         await _db.SaveChangesAsync(ct);
+
+        _logger.LogWarning("Cobro {CobroId} eliminado (baja lógica) por usuario {UsuarioId}",
+            cobro.Id, UsuarioIdActual());
 
         return Ok(new { message = "Cobro eliminado." });
     }

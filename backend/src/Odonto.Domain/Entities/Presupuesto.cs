@@ -33,4 +33,10 @@ public class Presupuesto
     public DateTime? FechaRespuesta { get; set; }
 
     public List<ItemPresupuesto> Items { get; set; } = new();
+
+    // Borrado lógico: "eliminar" marca estas 3 columnas en vez de borrar la
+    // fila (solo se permite sobre presupuestos Pendientes, ver controller).
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
 }

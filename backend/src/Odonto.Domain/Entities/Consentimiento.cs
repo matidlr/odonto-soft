@@ -30,4 +30,10 @@ public class Consentimiento
     public DateTime? FechaFirma { get; set; }
 
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
+
+    // Borrado lógico: "eliminar" marca estas 3 columnas en vez de borrar la
+    // fila (solo se permite sobre borradores sin firmar, ver controller).
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
 }

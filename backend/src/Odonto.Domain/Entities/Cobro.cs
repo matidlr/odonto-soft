@@ -30,4 +30,12 @@ public class Cobro
     public string? Concepto { get; set; }
 
     public DateTime Fecha { get; set; } = DateTime.UtcNow;
+
+    // Borrado lógico: nunca se borra un cobro de verdad (es un dato
+    // financiero). "Eliminar" solo marca estas 3 columnas; el registro
+    // sigue en la base para auditoría/backups, pero queda oculto de las
+    // consultas normales por el HasQueryFilter.
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
 }

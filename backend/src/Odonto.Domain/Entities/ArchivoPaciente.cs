@@ -28,4 +28,11 @@ public class ArchivoPaciente
     public long TamanioBytes { get; set; }
 
     public DateTime FechaSubida { get; set; } = DateTime.UtcNow;
+
+    // Borrado lógico: "eliminar" marca estas 3 columnas en vez de borrar la
+    // fila. El archivo físico en disco también se conserva (ver
+    // ArchivosPacienteController) para no perder la radiografía/estudio.
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
 }

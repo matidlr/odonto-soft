@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Odonto.Api.Validacion;
 using Odonto.Domain.Common;
 using Odonto.Domain.Entities;
 using Odonto.Infrastructure.Persistence;
@@ -33,11 +34,19 @@ public class ArchivosPacienteController : ControllerBase
 
     private readonly AppDbContext _db;
     private readonly IWebHostEnvironment _env;
+    private readonly ILogger<ArchivosPacienteController> _logger;
 
-    public ArchivosPacienteController(AppDbContext db, IWebHostEnvironment env)
+    public ArchivosPacienteController(AppDbContext db, IWebHostEnvironment env, ILogger<ArchivosPacienteController> logger)
     {
         _db = db;
         _env = env;
+        _logger = logger;
+    }
+
+    private Guid? UsuarioIdActual()
+    {
+        var claim = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+        return Guid.TryParse(claim, out var id) ? id : null;
     }
 
     public record ArchivoPacienteResponse(
@@ -79,6 +88,12 @@ public class ArchivosPacienteController : ControllerBase
 
         if (archivo.Length > TamanioMaximoBytes)
             return BadRequest(new { message = "El archivo supera el tamaño máximo permitido (20 MB)." });
+
+        if (!Validaciones.EsEnumValido(categoria))
+            return BadRequest(new { message = "Categoría inválida." });
+
+        if (descripcion?.Length > 500)
+            return BadRequest(new { message = "La descripción es demasiado larga." });
 
         var extension = Path.GetExtension(archivo.FileName);
         if (!TiposPermitidos.TryGetValue(extension, out var contentTypeSeguro))
@@ -150,11 +165,16 @@ public class ArchivosPacienteController : ControllerBase
         var archivo = await _db.ArchivosPaciente.FirstOrDefaultAsync(a => a.Id == archivoId && a.PacienteId == pacienteId, ct);
         if (archivo is null) return NotFound();
 
-        if (System.IO.File.Exists(archivo.RutaEnDisco))
-            System.IO.File.Delete(archivo.RutaEnDisco);
-
-        _db.ArchivosPaciente.Remove(archivo);
+        // Baja lógica: ni el registro ni el archivo físico en disco se
+        // borran de verdad, para no perder la radiografía/estudio por
+        // accidente. Solo se oculta de las consultas normales.
+        archivo.IsDeleted = true;
+        archivo.DeletedAt = DateTime.UtcNow;
+        archivo.DeletedBy = UsuarioIdActual();
         await _db.SaveChangesAsync(ct);
+
+        _logger.LogWarning("Archivo {ArchivoId} del paciente {PacienteId} eliminado (baja lógica) por usuario {UsuarioId}",
+            archivo.Id, pacienteId, UsuarioIdActual());
 
         return Ok(new { message = "Archivo eliminado." });
     }

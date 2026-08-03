@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Odonto.Api.Validacion;
 using Odonto.Domain.Common;
 using Odonto.Domain.Entities;
 using Odonto.Infrastructure.Persistence;
@@ -19,10 +20,18 @@ public class ConsentimientosController : ControllerBase
     private const int TamanioMaximoFirmaBase64 = 700_000; // ~500 KB de imagen en base64
 
     private readonly AppDbContext _db;
+    private readonly ILogger<ConsentimientosController> _logger;
 
-    public ConsentimientosController(AppDbContext db)
+    public ConsentimientosController(AppDbContext db, ILogger<ConsentimientosController> logger)
     {
         _db = db;
+        _logger = logger;
+    }
+
+    private Guid? UsuarioIdActual()
+    {
+        var claim = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+        return Guid.TryParse(claim, out var id) ? id : null;
     }
 
     public record ConsentimientoResponse(
@@ -77,10 +86,12 @@ public class ConsentimientosController : ControllerBase
     [HttpPost("api/pacientes/{pacienteId}/consentimientos")]
     public async Task<IActionResult> Crear(Guid pacienteId, CrearConsentimientoRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Titulo))
-            return BadRequest(new { message = "El título es obligatorio." });
+        if (string.IsNullOrWhiteSpace(request.Titulo) || request.Titulo.Length > 200)
+            return BadRequest(new { message = "El título es obligatorio y no puede superar los 200 caracteres." });
         if (string.IsNullOrWhiteSpace(request.Texto))
             return BadRequest(new { message = "El texto del consentimiento es obligatorio." });
+        if (!Validaciones.EsEnumValido(request.Tipo))
+            return BadRequest(new { message = "Tipo de consentimiento inválido." });
         if (request.FirmaBase64 is not null && request.FirmaBase64.Length > TamanioMaximoFirmaBase64)
             return BadRequest(new { message = "La firma es demasiado grande." });
 
@@ -152,8 +163,13 @@ public class ConsentimientosController : ControllerBase
         if (consentimiento.FirmaBase64 is not null)
             return BadRequest(new { message = "No se puede borrar un consentimiento ya firmado." });
 
-        _db.Consentimientos.Remove(consentimiento);
+        consentimiento.IsDeleted = true;
+        consentimiento.DeletedAt = DateTime.UtcNow;
+        consentimiento.DeletedBy = UsuarioIdActual();
         await _db.SaveChangesAsync(ct);
+
+        _logger.LogWarning("Consentimiento {ConsentimientoId} eliminado (baja lógica) por usuario {UsuarioId}",
+            consentimiento.Id, UsuarioIdActual());
 
         return Ok(new { message = "Consentimiento eliminado." });
     }

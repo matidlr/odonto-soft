@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Odonto.Api.Validacion;
 using Odonto.Domain.Common;
 using Odonto.Domain.Entities;
 using Odonto.Infrastructure.Persistence;
@@ -18,10 +19,18 @@ namespace Odonto.Api.Controllers;
 public class DisponibilidadController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly ILogger<DisponibilidadController> _logger;
 
-    public DisponibilidadController(AppDbContext db)
+    public DisponibilidadController(AppDbContext db, ILogger<DisponibilidadController> logger)
     {
         _db = db;
+        _logger = logger;
+    }
+
+    private Guid? UsuarioIdActual()
+    {
+        var claim = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+        return Guid.TryParse(claim, out var id) ? id : null;
     }
 
     /// <summary>Sede a usar cuando no se especifica una: la Principal del odontólogo.</summary>
@@ -51,6 +60,12 @@ public class DisponibilidadController : ControllerBase
         if (odontologo is null)
             return BadRequest(new { message = "Odontólogo inválido." });
 
+        if (!Validaciones.EsEnumValido(request.Tipo))
+            return BadRequest(new { message = "Tipo de disponibilidad inválido." });
+
+        if (!Validaciones.EsEnumValido(request.DiaSemana))
+            return BadRequest(new { message = "Día de la semana inválido." });
+
         if (request.Tipo == TipoDisponibilidad.Recurrente && request.DiaSemana is null)
             return BadRequest(new { message = "Falta DiaSemana para una regla recurrente." });
 
@@ -59,6 +74,15 @@ public class DisponibilidadController : ControllerBase
 
         if (!request.TodoElDia && (request.HoraInicio is null || request.HoraFin is null))
             return BadRequest(new { message = "Falta HoraInicio/HoraFin (o marcá TodoElDia=true)." });
+
+        if (!request.TodoElDia && request.HoraInicio is not null && request.HoraFin is not null && request.HoraInicio >= request.HoraFin)
+            return BadRequest(new { message = "HoraInicio tiene que ser antes que HoraFin." });
+
+        if (request.SedeId is Guid sedeIdPedida)
+        {
+            var sedeValida = await _db.Sedes.AnyAsync(s => s.Id == sedeIdPedida && s.OdontologoId == request.OdontologoId, ct);
+            if (!sedeValida) return BadRequest(new { message = "Sede inválida para este odontólogo." });
+        }
 
         var sedeId = await ResolverSedeId(request.OdontologoId, request.SedeId, ct);
 
@@ -114,8 +138,13 @@ public class DisponibilidadController : ControllerBase
         var disponibilidad = await _db.Disponibilidades.FindAsync(new object[] { id }, ct);
         if (disponibilidad is null) return NotFound();
 
-        _db.Disponibilidades.Remove(disponibilidad);
+        disponibilidad.IsDeleted = true;
+        disponibilidad.DeletedAt = DateTime.UtcNow;
+        disponibilidad.DeletedBy = UsuarioIdActual();
         await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Disponibilidad {DisponibilidadId} eliminada (baja lógica) por usuario {UsuarioId}",
+            disponibilidad.Id, UsuarioIdActual());
 
         return NoContent();
     }

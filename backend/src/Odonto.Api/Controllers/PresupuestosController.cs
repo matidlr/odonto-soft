@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Odonto.Api.Validacion;
 using Odonto.Domain.Common;
 using Odonto.Domain.Entities;
 using Odonto.Infrastructure.Persistence;
@@ -18,10 +19,18 @@ namespace Odonto.Api.Controllers;
 public class PresupuestosController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly ILogger<PresupuestosController> _logger;
 
-    public PresupuestosController(AppDbContext db)
+    public PresupuestosController(AppDbContext db, ILogger<PresupuestosController> logger)
     {
         _db = db;
+        _logger = logger;
+    }
+
+    private Guid? UsuarioIdActual()
+    {
+        var claim = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+        return Guid.TryParse(claim, out var id) ? id : null;
     }
 
     public record ItemResponse(
@@ -107,15 +116,22 @@ public class PresupuestosController : ControllerBase
 
         foreach (var item in request.Items)
         {
-            if (string.IsNullOrWhiteSpace(item.Descripcion))
-                return BadRequest(new { message = "Cada ítem necesita una descripción." });
+            if (string.IsNullOrWhiteSpace(item.Descripcion) || item.Descripcion.Length > 300)
+                return BadRequest(new { message = "Cada ítem necesita una descripción de hasta 300 caracteres." });
             if (item.Cantidad <= 0)
                 return BadRequest(new { message = "La cantidad de cada ítem debe ser mayor a 0." });
             if (item.PrecioUnitario < 0)
                 return BadRequest(new { message = "El precio de cada ítem no puede ser negativo." });
             if (item.NumeroFdi is null && item.EstadoDienteResultante is not null)
                 return BadRequest(new { message = "Si indicás el estado resultante, también tenés que indicar el diente." });
+            if (!Validaciones.EsNumeroFdiValido(item.NumeroFdi))
+                return BadRequest(new { message = "Número de pieza dental inválido." });
+            if (!Validaciones.EsEnumValido(item.EstadoDienteResultante))
+                return BadRequest(new { message = "Estado de diente resultante inválido." });
         }
+
+        if (request.Observaciones?.Length > 1000)
+            return BadRequest(new { message = "Las observaciones no pueden superar los 1000 caracteres." });
 
         var paciente = await _db.Pacientes.FirstOrDefaultAsync(p => p.Id == pacienteId, ct);
         if (paciente is null) return NotFound(new { message = "Paciente no encontrado." });
@@ -158,6 +174,9 @@ public class PresupuestosController : ControllerBase
     [HttpPut("api/presupuestos/{id}/estado")]
     public async Task<IActionResult> CambiarEstado(Guid id, CambiarEstadoRequest request, CancellationToken ct)
     {
+        if (!Validaciones.EsEnumValido(request.Estado))
+            return BadRequest(new { message = "Estado inválido." });
+
         if (request.Estado == EstadoPresupuesto.Pendiente)
             return BadRequest(new { message = "No se puede volver un presupuesto a Pendiente." });
 
@@ -230,8 +249,13 @@ public class PresupuestosController : ControllerBase
         if (presupuesto.Estado != EstadoPresupuesto.Pendiente)
             return BadRequest(new { message = "Solo se pueden borrar presupuestos Pendientes." });
 
-        _db.Presupuestos.Remove(presupuesto);
+        presupuesto.IsDeleted = true;
+        presupuesto.DeletedAt = DateTime.UtcNow;
+        presupuesto.DeletedBy = UsuarioIdActual();
         await _db.SaveChangesAsync(ct);
+
+        _logger.LogWarning("Presupuesto {PresupuestoId} eliminado (baja lógica) por usuario {UsuarioId}",
+            presupuesto.Id, UsuarioIdActual());
 
         return Ok(new { message = "Presupuesto eliminado." });
     }

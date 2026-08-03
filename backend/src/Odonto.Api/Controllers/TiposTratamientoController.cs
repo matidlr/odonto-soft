@@ -18,6 +18,18 @@ public class TiposTratamientoController : ControllerBase
         _db = db;
     }
 
+    /// <summary>Reglas comunes a Crear/Editar: nunca confiar en que Angular ya validó esto.</summary>
+    private static string? ValidarTipoTratamiento(string nombre, int duracionMinutos, decimal precioBase)
+    {
+        if (string.IsNullOrWhiteSpace(nombre) || nombre.Length > 150)
+            return "El nombre es obligatorio y no puede superar los 150 caracteres.";
+        if (duracionMinutos <= 0 || duracionMinutos > 600)
+            return "La duración tiene que ser mayor a 0 y no puede superar los 600 minutos.";
+        if (precioBase < 0)
+            return "El precio no puede ser negativo.";
+        return null;
+    }
+
     public record CrearTipoTratamientoRequest(string Nombre, int DuracionMinutos, decimal PrecioBase, string? Observaciones);
 
     [HttpPost]
@@ -26,6 +38,9 @@ public class TiposTratamientoController : ControllerBase
         var tenantIdClaim = User.FindFirst("tenant_id")?.Value;
         if (!Guid.TryParse(tenantIdClaim, out var tenantId))
             return BadRequest(new { message = "No se pudo determinar el tenant del usuario." });
+
+        var error = ValidarTipoTratamiento(request.Nombre, request.DuracionMinutos, request.PrecioBase);
+        if (error is not null) return BadRequest(new { message = error });
 
         var tipo = new TipoTratamiento
         {
@@ -49,6 +64,9 @@ public class TiposTratamientoController : ControllerBase
     {
         var tipo = await _db.TiposTratamiento.FirstOrDefaultAsync(t => t.Id == id, ct);
         if (tipo is null) return NotFound(new { message = "Tipo de tratamiento no encontrado." });
+
+        var error = ValidarTipoTratamiento(request.Nombre, request.DuracionMinutos, request.PrecioBase);
+        if (error is not null) return BadRequest(new { message = error });
 
         tipo.Nombre = request.Nombre;
         tipo.DuracionMinutos = request.DuracionMinutos;

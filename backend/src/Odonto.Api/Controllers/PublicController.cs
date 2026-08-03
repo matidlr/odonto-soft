@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Odonto.Api.Validacion;
 using Odonto.Application.Agenda;
 using Odonto.Domain.Common;
 using Odonto.Domain.Entities;
@@ -52,6 +53,27 @@ public class PublicController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Nombre))
             return BadRequest(new { message = "El nombre es obligatorio." });
+
+        if (request.Nombre.Length > 200)
+            return BadRequest(new { message = "El nombre es demasiado largo." });
+
+        if (request.Dni?.Length > 30)
+            return BadRequest(new { message = "El DNI es demasiado largo." });
+
+        if (request.Telefono?.Length > 30)
+            return BadRequest(new { message = "El teléfono es demasiado largo." });
+
+        if (!string.IsNullOrWhiteSpace(request.Email) && !Validaciones.EsEmailValido(request.Email))
+            return BadRequest(new { message = "El email no tiene un formato válido." });
+
+        // No confiar en la fecha que manda el navegador: no puede ser futura
+        // (nadie nace en el futuro) ni absurdamente antigua (típico error de
+        // tipeo, ej. año 1901 en vez de 1991).
+        if (request.FechaNacimiento is DateTime fechaNacimiento &&
+            (fechaNacimiento.Date > DateTime.UtcNow.Date || fechaNacimiento.Year < 1900))
+        {
+            return BadRequest(new { message = "La fecha de nacimiento no es válida." });
+        }
 
         var tenant = await _db.Tenants
             .FirstOrDefaultAsync(t => t.Slug == slug && t.Estado == TenantEstado.Activo, ct);
@@ -197,6 +219,12 @@ public class PublicController : ControllerBase
     [HttpPost("clinicas/{slug}/turnos")]
     public async Task<IActionResult> CrearTurno(string slug, CrearTurnoRequest request, CancellationToken ct)
     {
+        // No confiar en la fecha que manda el navegador (esto es un endpoint
+        // anónimo): nada de turnos en el pasado ni años de anticipación, que
+        // es lo que pasaría si alguien manda cualquier cosa a mano.
+        if (request.FechaHora < DateTime.UtcNow.AddMinutes(-5) || request.FechaHora > DateTime.UtcNow.AddYears(1))
+            return BadRequest(new { message = "La fecha del turno no es válida." });
+
         var tenant = await _db.Tenants.FirstOrDefaultAsync(t => t.Slug == slug && t.Estado == TenantEstado.Activo, ct);
         if (tenant is null) return NotFound(new { message = "Clínica no encontrada o no disponible." });
 
@@ -218,6 +246,14 @@ public class PublicController : ControllerBase
                 .FirstOrDefaultAsync(t => t.Id == ttId && t.TenantId == tenant.Id, ct);
             if (tipoTratamiento is null) return BadRequest(new { message = "Tipo de tratamiento inválido." });
             duracionMinutos = tipoTratamiento.DuracionMinutos;
+        }
+
+        if (request.SedeId is Guid sedeIdPedida)
+        {
+            var sedeValida = await _db.Sedes
+                .IgnoreQueryFilters()
+                .AnyAsync(s => s.Id == sedeIdPedida && s.TenantId == tenant.Id && s.OdontologoId == request.OdontologoId, ct);
+            if (!sedeValida) return BadRequest(new { message = "Sede inválida para este odontólogo." });
         }
 
         // Igual que en la reserva manual: nunca se filtra por sede acá, para
