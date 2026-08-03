@@ -90,12 +90,40 @@ public class PublicController : ControllerBase
         return Ok(odontologos);
     }
 
+    [HttpGet("clinicas/{slug}/odontologos/{odontologoId}/sedes")]
+    public async Task<IActionResult> GetSedes(string slug, Guid odontologoId, CancellationToken ct)
+    {
+        var tenant = await _db.Tenants.FirstOrDefaultAsync(t => t.Slug == slug && t.Estado == TenantEstado.Activo, ct);
+        if (tenant is null) return NotFound(new { message = "Clínica no encontrada o no disponible." });
+
+        var sedes = await _db.Sedes
+            .IgnoreQueryFilters()
+            .Where(s => s.OdontologoId == odontologoId && s.TenantId == tenant.Id && s.Activa)
+            .OrderByDescending(s => s.EsPrincipal).ThenBy(s => s.Nombre)
+            .Select(s => new { s.Id, s.Nombre, s.Direccion, s.EsPrincipal })
+            .ToListAsync(ct);
+
+        return Ok(sedes);
+    }
+
+    /// <summary>Sede a usar cuando no se especifica una: la Principal del odontólogo.</summary>
+    private async Task<Guid?> ResolverSedeId(Guid odontologoId, Guid? sedeIdPedido, CancellationToken ct)
+    {
+        if (sedeIdPedido is Guid pedida) return pedida;
+
+        var principal = await _db.Sedes
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(s => s.OdontologoId == odontologoId && s.EsPrincipal, ct);
+        return principal?.Id;
+    }
+
     [HttpGet("clinicas/{slug}/odontologos/{odontologoId}/horarios-disponibles")]
     public async Task<IActionResult> GetHorariosDisponibles(
         string slug,
         Guid odontologoId,
         [FromQuery] DateTime fecha,
         [FromQuery] Guid? tipoTratamientoId,
+        [FromQuery] Guid? sedeId,
         CancellationToken ct)
     {
         var tenant = await _db.Tenants.FirstOrDefaultAsync(t => t.Slug == slug && t.Estado == TenantEstado.Activo, ct);
@@ -115,12 +143,14 @@ public class PublicController : ControllerBase
             if (tipo is not null) duracionMinutos = tipo.DuracionMinutos;
         }
 
+        var sedeActualId = await ResolverSedeId(odontologoId, sedeId, ct);
+
         var fechaSolo = fecha.Date;
         var diaSemana = fechaSolo.DayOfWeek.ADiaSemana();
 
         var reglas = await _db.Disponibilidades
             .IgnoreQueryFilters()
-            .Where(d => d.OdontologoId == odontologoId &&
+            .Where(d => d.OdontologoId == odontologoId && d.SedeId == sedeActualId &&
                 ((d.Tipo == TipoDisponibilidad.Recurrente && d.DiaSemana == diaSemana) ||
                  (d.Tipo == TipoDisponibilidad.Excepcion && d.Fecha != null && d.Fecha.Value.Date == fechaSolo)))
             .ToListAsync(ct);
@@ -162,7 +192,7 @@ public class PublicController : ControllerBase
         });
     }
 
-    public record CrearTurnoRequest(Guid PacienteId, Guid OdontologoId, Guid? TipoTratamientoId, DateTime FechaHora);
+    public record CrearTurnoRequest(Guid PacienteId, Guid OdontologoId, Guid? SedeId, Guid? TipoTratamientoId, DateTime FechaHora);
 
     [HttpPost("clinicas/{slug}/turnos")]
     public async Task<IActionResult> CrearTurno(string slug, CrearTurnoRequest request, CancellationToken ct)
@@ -190,6 +220,9 @@ public class PublicController : ControllerBase
             duracionMinutos = tipoTratamiento.DuracionMinutos;
         }
 
+        // Igual que en la reserva manual: nunca se filtra por sede acá, para
+        // que el odontólogo jamás quede agendado a la misma hora en dos
+        // sedes distintas.
         var fin = request.FechaHora.AddMinutes(duracionMinutos);
         var haySolapamiento = await _db.Turnos
             .IgnoreQueryFilters()
@@ -202,10 +235,13 @@ public class PublicController : ControllerBase
         if (haySolapamiento)
             return Conflict(new { message = "Ese horario ya no está disponible." });
 
+        var sedeId = await ResolverSedeId(request.OdontologoId, request.SedeId, ct);
+
         var turno = new Turno
         {
             TenantId = tenant.Id,
             OdontologoId = request.OdontologoId,
+            SedeId = sedeId,
             PacienteId = request.PacienteId,
             TipoTratamientoId = request.TipoTratamientoId,
             FechaHora = request.FechaHora,

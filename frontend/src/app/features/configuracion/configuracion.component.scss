@@ -1,0 +1,89 @@
+.contenedor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.panel {
+  background: white;
+  border-radius: 8px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+
+  h2 {
+    margin: 0 0 1rem;
+    font-size: 1.05rem;
+  }
+}
+
+.fila-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+
+  label {
+    font-size: 0.8rem;
+    color: #555;
+  }
+
+  input {
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+}
+
+.error {
+  color: #d02828;
+  font-size: 0.85rem;
+}
+
+.ok {
+  color: #16803c;
+  font-size: 0.85rem;
+}
+
+button[type='submit'] {
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+.logo-preview {
+  max-width: 100%;
+  max-height: 140px;
+  display: block;
+  margin-bottom: 1rem;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 0.5rem;
+}
+
+.sin-logo {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.lista-enlaces {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+
+  a {
+    color: #2563eb;
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+}

@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<Odontologo> Odontologos => Set<Odontologo>();
     public DbSet<Paciente> Pacientes => Set<Paciente>();
     public DbSet<Disponibilidad> Disponibilidades => Set<Disponibilidad>();
+    public DbSet<Sede> Sedes => Set<Sede>();
     public DbSet<TipoTratamiento> TiposTratamiento => Set<TipoTratamiento>();
     public DbSet<Turno> Turnos => Set<Turno>();
     public DbSet<Notificacion> Notificaciones => Set<Notificacion>();
@@ -93,10 +94,19 @@ public class AppDbContext : DbContext
             b.HasQueryFilter(p => _tenantContext.EsSuperAdmin || p.TenantId == _tenantContext.TenantId);
         });
 
+        modelBuilder.Entity<Sede>(b =>
+        {
+            b.HasOne(s => s.Tenant).WithMany().HasForeignKey(s => s.TenantId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne(s => s.Odontologo).WithMany().HasForeignKey(s => s.OdontologoId).OnDelete(DeleteBehavior.Cascade);
+
+            b.HasQueryFilter(s => _tenantContext.EsSuperAdmin || s.TenantId == _tenantContext.TenantId);
+        });
+
         modelBuilder.Entity<Disponibilidad>(b =>
         {
             b.HasOne(d => d.Tenant).WithMany().HasForeignKey(d => d.TenantId).OnDelete(DeleteBehavior.Restrict);
             b.HasOne(d => d.Odontologo).WithMany().HasForeignKey(d => d.OdontologoId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(d => d.Sede).WithMany().HasForeignKey(d => d.SedeId).OnDelete(DeleteBehavior.Cascade);
 
             b.HasQueryFilter(d => _tenantContext.EsSuperAdmin || d.TenantId == _tenantContext.TenantId);
         });
@@ -115,6 +125,7 @@ public class AppDbContext : DbContext
             b.HasOne(t => t.Odontologo).WithMany().HasForeignKey(t => t.OdontologoId).OnDelete(DeleteBehavior.Restrict);
             b.HasOne(t => t.Paciente).WithMany().HasForeignKey(t => t.PacienteId).OnDelete(DeleteBehavior.Restrict);
             b.HasOne(t => t.TipoTratamiento).WithMany().HasForeignKey(t => t.TipoTratamientoId).OnDelete(DeleteBehavior.SetNull);
+            b.HasOne(t => t.Sede).WithMany().HasForeignKey(t => t.SedeId).OnDelete(DeleteBehavior.SetNull);
 
             b.HasIndex(t => new { t.OdontologoId, t.FechaHora });
 

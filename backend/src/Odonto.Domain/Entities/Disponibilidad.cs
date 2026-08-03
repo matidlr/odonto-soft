@@ -22,6 +22,12 @@ public class Disponibilidad
     public Guid OdontologoId { get; set; }
     public Odontologo Odontologo { get; set; } = null!;
 
+    // Sede a la que aplica esta regla de horario. Nullable por compatibilidad
+    // con datos viejos (se completa con la sede Principal en la migración);
+    // los endpoints nuevos siempre la piden o la infieren.
+    public Guid? SedeId { get; set; }
+    public Sede? Sede { get; set; }
+
     public TipoDisponibilidad Tipo { get; set; }
 
     // Solo aplica si Tipo == Recurrente

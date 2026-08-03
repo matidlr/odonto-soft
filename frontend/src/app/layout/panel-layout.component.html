@@ -26,7 +26,9 @@
       <a routerLink="/inventario" routerLinkActive="activo">Inventario</a>
       <a routerLink="/disponibilidad" routerLinkActive="activo">Disponibilidad</a>
       <a routerLink="/odontologos" routerLinkActive="activo">Odontólogos</a>
+      <a routerLink="/sedes" routerLinkActive="activo">Sedes</a>
       <a routerLink="/plan" routerLinkActive="activo">Plan</a>
+      <a routerLink="/configuracion" routerLinkActive="activo">Configuración</a>
       @if (auth.sesion()?.rol === 'SuperAdmin') {
         <a routerLink="/admin/tenants" routerLinkActive="activo">Tenants</a>
       }

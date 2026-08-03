@@ -1,0 +1,83 @@
+<div class="header">
+  <h1>Sedes</h1>
+  @if (odontologoSeleccionado) {
+    <button (click)="mostrarForm() ? cancelar() : abrirNuevo()">
+      {{ mostrarForm() ? 'Cancelar' : '+ Agregar sede' }}
+    </button>
+  }
+</div>
+
+<p class="ayuda">
+  Si el odontólogo atiende en más de un consultorio o clínica, agregalos acá. Cada sede tiene su propio horario
+  (configurable en "Disponibilidad"), pero comparten los mismos pacientes, tratamientos y presupuestos. El sistema
+  nunca va a permitir agendar al mismo odontólogo a la misma hora en dos sedes distintas.
+</p>
+
+@if (odontologos().length === 0) {
+  <p>No hay odontólogos cargados todavía.</p>
+} @else {
+  <div class="selector-odontologo">
+    <label>Odontólogo</label>
+    <select [(ngModel)]="odontologoSeleccionado" (ngModelChange)="cargarSedes()">
+      @for (o of odontologos(); track o.id) {
+        <option [value]="o.id">{{ o.nombre }}</option>
+      }
+    </select>
+  </div>
+
+  @if (mostrarForm()) {
+    <form class="form-sede" (ngSubmit)="guardar()" #form="ngForm">
+      <div class="fila">
+        <label>Nombre*</label>
+        <input name="nombre" type="text" [(ngModel)]="nombre" required placeholder="Ej: Consultorio B" />
+      </div>
+      <div class="fila">
+        <label>Dirección</label>
+        <input name="direccion" type="text" [(ngModel)]="direccion" />
+      </div>
+      @if (editandoId()) {
+        <div class="fila fila-checkbox">
+          <label><input type="checkbox" name="activa" [(ngModel)]="activa" /> Activa</label>
+        </div>
+      }
+
+      @if (error()) {
+        <p class="error">{{ error() }}</p>
+      }
+
+      <button type="submit" [disabled]="form.invalid || guardando()">
+        {{ guardando() ? 'Guardando...' : (editandoId() ? 'Guardar cambios' : 'Crear sede') }}
+      </button>
+    </form>
+  }
+
+  @if (cargando()) {
+    <p>Cargando...</p>
+  } @else if (sedes().length === 0) {
+    <p>Este odontólogo no tiene sedes todavía.</p>
+  } @else {
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Dirección</th>
+          <th>Estado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (s of sedes(); track s.id) {
+          <tr [class.inactiva]="!s.activa">
+            <td>
+              {{ s.nombre }}
+              @if (s.esPrincipal) { <span class="tag-principal">Principal</span> }
+            </td>
+            <td>{{ s.direccion || '-' }}</td>
+            <td>{{ s.activa ? 'Activa' : 'Inactiva' }}</td>
+            <td><button type="button" class="btn-editar" (click)="editar(s)">Editar</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+}

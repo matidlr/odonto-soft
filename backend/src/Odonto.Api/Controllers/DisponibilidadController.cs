@@ -24,8 +24,18 @@ public class DisponibilidadController : ControllerBase
         _db = db;
     }
 
+    /// <summary>Sede a usar cuando no se especifica una: la Principal del odontólogo.</summary>
+    private async Task<Guid?> ResolverSedeId(Guid odontologoId, Guid? sedeIdPedido, CancellationToken ct)
+    {
+        if (sedeIdPedido is Guid pedida) return pedida;
+
+        var principal = await _db.Sedes.FirstOrDefaultAsync(s => s.OdontologoId == odontologoId && s.EsPrincipal, ct);
+        return principal?.Id;
+    }
+
     public record CrearDisponibilidadRequest(
         Guid OdontologoId,
+        Guid? SedeId,
         TipoDisponibilidad Tipo,
         DiaSemana? DiaSemana,
         DateTime? Fecha,
@@ -50,10 +60,13 @@ public class DisponibilidadController : ControllerBase
         if (!request.TodoElDia && (request.HoraInicio is null || request.HoraFin is null))
             return BadRequest(new { message = "Falta HoraInicio/HoraFin (o marcá TodoElDia=true)." });
 
+        var sedeId = await ResolverSedeId(request.OdontologoId, request.SedeId, ct);
+
         var disponibilidad = new Disponibilidad
         {
             TenantId = odontologo.TenantId,
             OdontologoId = odontologo.Id,
+            SedeId = sedeId,
             Tipo = request.Tipo,
             DiaSemana = request.DiaSemana,
             Fecha = request.Fecha,
@@ -70,16 +83,18 @@ public class DisponibilidadController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] Guid? odontologoId, CancellationToken ct)
+    public async Task<IActionResult> GetAll([FromQuery] Guid? odontologoId, [FromQuery] Guid? sedeId, CancellationToken ct)
     {
         var query = _db.Disponibilidades.AsQueryable();
         if (odontologoId is Guid id) query = query.Where(d => d.OdontologoId == id);
+        if (sedeId is Guid sid) query = query.Where(d => d.SedeId == sid);
 
         var resultado = await query
             .Select(d => new
             {
                 d.Id,
                 d.OdontologoId,
+                d.SedeId,
                 Tipo = d.Tipo.ToString(),
                 DiaSemana = d.DiaSemana == null ? null : d.DiaSemana.ToString(),
                 d.Fecha,

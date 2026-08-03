@@ -230,6 +230,37 @@
   }
 }
 
+.slot-otra-sede {
+  background: repeating-linear-gradient(45deg, #fef3c7, #fef3c7 6px, #fde68a 6px, #fde68a 12px);
+  border-color: #d97706;
+  color: #92400e;
+  cursor: not-allowed;
+
+  .detalle {
+    color: #92400e;
+    font-size: 0.75rem;
+  }
+}
+
+.selector-sede {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+
+  label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  select {
+    padding: 0.4rem;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+  }
+}
+
 .form-reserva,
 .detalle-turno {
   border-top: 1px solid #eee;

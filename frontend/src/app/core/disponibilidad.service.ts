@@ -9,6 +9,7 @@ export type TipoDisponibilidad = 'Recurrente' | 'Excepcion';
 export interface Disponibilidad {
   id: string;
   odontologoId: string;
+  sedeId: string | null;
   tipo: TipoDisponibilidad;
   diaSemana: DiaSemana | null;
   fecha: string | null;
@@ -20,6 +21,7 @@ export interface Disponibilidad {
 
 export interface CrearDisponibilidadRequest {
   odontologoId: string;
+  sedeId?: string;
   tipo: TipoDisponibilidad;
   diaSemana?: DiaSemana;
   fecha?: string;
@@ -33,9 +35,10 @@ export interface CrearDisponibilidadRequest {
 export class DisponibilidadService {
   constructor(private http: HttpClient) {}
 
-  getAll(odontologoId?: string): Promise<Disponibilidad[]> {
+  getAll(odontologoId?: string, sedeId?: string): Promise<Disponibilidad[]> {
     const params: Record<string, string> = {};
     if (odontologoId) params['odontologoId'] = odontologoId;
+    if (sedeId) params['sedeId'] = sedeId;
     return firstValueFrom(
       this.http.get<Disponibilidad[]>(`${API_BASE_URL}/disponibilidad`, { params })
     );

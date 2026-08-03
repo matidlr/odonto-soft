@@ -27,6 +27,17 @@
   <button type="button" (click)="cambiarMes(1)">→</button>
 </div>
 
+@if (sedes().length > 1) {
+  <div class="selector-sede">
+    <label>Sede</label>
+    <select [ngModel]="sedeSeleccionada()" (ngModelChange)="cambiarSede($event)">
+      @for (s of sedes(); track s.id) {
+        <option [value]="s.id">{{ s.nombre }}</option>
+      }
+    </select>
+  </div>
+}
+
 @if (!contexto.seleccionadoId()) {
   <p>Cargando odontólogo...</p>
 } @else {
@@ -94,12 +105,15 @@
                 [class.slot-libre]="slot.estado === 'libre'"
                 [class.slot-reservado]="slot.estado === 'reservado'"
                 [class.slot-bloqueado]="slot.estado === 'bloqueado'"
-                [disabled]="procesandoBloqueo()"
+                [class.slot-otra-sede]="slot.estado === 'otraSede'"
+                [disabled]="procesandoBloqueo() || slot.estado === 'otraSede'"
                 (click)="clicSlot(slot)"
               >
                 <span class="hora">{{ slot.hora }}</span>
                 @if (slot.estado === 'reservado' && slot.turno) {
                   <span class="detalle">{{ slot.turno.pacienteNombre }}</span>
+                } @else if (slot.estado === 'otraSede' && slot.turno) {
+                  <span class="detalle">Ocupado en {{ slot.turno.sedeNombre || 'otra sede' }}</span>
                 } @else if (slot.estado === 'bloqueado') {
                   <span class="detalle">Bloqueado</span>
                 } @else {

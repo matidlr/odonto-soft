@@ -18,6 +18,13 @@ export interface CrearOdontologoRequest {
   colorAgenda?: string;
 }
 
+export interface EditarOdontologoRequest {
+  nombre: string;
+  matricula: string;
+  especialidad?: string;
+  colorAgenda?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class OdontologoService {
   constructor(private http: HttpClient) {}
@@ -28,5 +35,9 @@ export class OdontologoService {
 
   crear(datos: CrearOdontologoRequest): Promise<{ id: string }> {
     return firstValueFrom(this.http.post<{ id: string }>(`${API_BASE_URL}/odontologos`, datos));
+  }
+
+  editar(id: string, datos: EditarOdontologoRequest): Promise<{ id: string }> {
+    return firstValueFrom(this.http.put<{ id: string }>(`${API_BASE_URL}/odontologos/${id}`, datos));
   }
 }

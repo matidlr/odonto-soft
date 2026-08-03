@@ -30,6 +30,17 @@ public class Tenant
 
     public DateTime FechaAlta { get; set; } = DateTime.UtcNow;
 
+    // Datos de contacto de la clínica, editables desde Configuración.
+    public string? Direccion { get; set; }
+    public string? Telefono { get; set; }
+    public string? EmailContacto { get; set; }
+
+    // Logo de la clínica, guardado en disco igual que el resto de los
+    // archivos subidos (ver nota en ArchivoPaciente sobre migrar a un
+    // storage externo el día que esto se dockerice/despliegue).
+    public string? LogoRutaEnDisco { get; set; }
+    public string? LogoContentType { get; set; }
+
     public ICollection<Usuario> Usuarios { get; set; } = new List<Usuario>();
     public ICollection<Paciente> Pacientes { get; set; } = new List<Paciente>();
 }

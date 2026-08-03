@@ -12,6 +12,14 @@ public class Turno
     public Guid OdontologoId { get; set; }
     public Odontologo Odontologo { get; set; } = null!;
 
+    // Sede donde es el turno. Nullable por compatibilidad con datos viejos
+    // (se completa con la sede Principal en la migración). El chequeo de
+    // solapamiento de horario del odontólogo NUNCA se filtra por sede — es
+    // a propósito, para que jamás quede agendado a la misma hora en dos
+    // sedes distintas.
+    public Guid? SedeId { get; set; }
+    public Sede? Sede { get; set; }
+
     public Guid PacienteId { get; set; }
     public Paciente Paciente { get; set; } = null!;
 

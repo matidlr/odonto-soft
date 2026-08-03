@@ -84,6 +84,40 @@ public class OdontologosController : ControllerBase
         };
 
         _db.Odontologos.Add(odontologo);
+
+        // Igual que al registrar la clínica: todo odontólogo arranca con
+        // una sede Principal automática.
+        _db.Sedes.Add(new Sede
+        {
+            TenantId = tenantId,
+            OdontologoId = odontologo.Id,
+            Nombre = "Principal",
+            EsPrincipal = true
+        });
+
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new { odontologo.Id });
+    }
+
+    public record EditarOdontologoRequest(string Nombre, string Matricula, string? Especialidad, string? ColorAgenda);
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Editar(Guid id, EditarOdontologoRequest request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Nombre))
+            return BadRequest(new { message = "El nombre es obligatorio." });
+        if (string.IsNullOrWhiteSpace(request.Matricula))
+            return BadRequest(new { message = "La matrícula es obligatoria." });
+
+        var odontologo = await _db.Odontologos.FirstOrDefaultAsync(o => o.Id == id, ct);
+        if (odontologo is null) return NotFound(new { message = "Odontólogo no encontrado." });
+
+        odontologo.Nombre = request.Nombre;
+        odontologo.Matricula = request.Matricula;
+        odontologo.Especialidad = request.Especialidad;
+        odontologo.ColorAgenda = string.IsNullOrWhiteSpace(request.ColorAgenda) ? odontologo.ColorAgenda : request.ColorAgenda;
+
         await _db.SaveChangesAsync(ct);
 
         return Ok(new { odontologo.Id });

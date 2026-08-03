@@ -94,6 +94,20 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'configuracion',
+        loadComponent: () =>
+          import('./features/configuracion/configuracion.component').then(
+            (m) => m.ConfiguracionComponent
+          )
+      },
+      {
+        path: 'sedes',
+        loadComponent: () =>
+          import('./features/sedes/sedes.component').then(
+            (m) => m.SedesComponent
+          )
+      },
+      {
         path: 'tratamientos',
         loadComponent: () =>
           import('./features/tratamientos/tratamientos.component').then(

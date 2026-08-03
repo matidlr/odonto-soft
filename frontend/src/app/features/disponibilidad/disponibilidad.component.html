@@ -12,11 +12,20 @@
 } @else {
   <div class="selector-odontologo">
     <label>Odontólogo</label>
-    <select [(ngModel)]="odontologoSeleccionado" (ngModelChange)="cargarReglas()">
+    <select [(ngModel)]="odontologoSeleccionado" (ngModelChange)="cambiarOdontologo()">
       @for (o of odontologos(); track o.id) {
         <option [value]="o.id">{{ o.nombre }}</option>
       }
     </select>
+
+    @if (sedes().length > 1) {
+      <label>Sede</label>
+      <select [(ngModel)]="sedeSeleccionada" (ngModelChange)="cargarReglas()">
+        @for (s of sedes(); track s.id) {
+          <option [value]="s.id">{{ s.nombre }}</option>
+        }
+      </select>
+    }
   </div>
 
   @if (mostrarForm()) {

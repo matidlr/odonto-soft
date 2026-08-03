@@ -1,12 +1,12 @@
 <div class="header">
   <h1>Odontólogos</h1>
-  <button (click)="mostrarForm.set(!mostrarForm())">
+  <button (click)="mostrarForm() ? cancelar() : abrirNuevo()">
     {{ mostrarForm() ? 'Cancelar' : '+ Agregar odontólogo' }}
   </button>
 </div>
 
 @if (mostrarForm()) {
-  <form class="form-odontologo" (ngSubmit)="crear()" #form="ngForm">
+  <form class="form-odontologo" (ngSubmit)="guardar()" #form="ngForm">
     <div class="fila">
       <label>Nombre*</label>
       <input name="nombre" type="text" [(ngModel)]="nombre" required placeholder="Ej: Dra. María Pérez" />
@@ -29,7 +29,7 @@
     }
 
     <button type="submit" [disabled]="form.invalid || guardando()">
-      {{ guardando() ? 'Guardando...' : 'Guardar' }}
+      {{ guardando() ? 'Guardando...' : (editandoId() ? 'Guardar cambios' : 'Guardar') }}
     </button>
   </form>
 }
@@ -46,6 +46,7 @@
         <th>Nombre</th>
         <th>Matrícula</th>
         <th>Especialidad</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
@@ -55,6 +56,7 @@
           <td>{{ o.nombre }}</td>
           <td>{{ o.matricula }}</td>
           <td>{{ o.especialidad || '-' }}</td>
+          <td><button type="button" class="btn-editar" (click)="editar(o)">Editar</button></td>
         </tr>
       }
     </tbody>

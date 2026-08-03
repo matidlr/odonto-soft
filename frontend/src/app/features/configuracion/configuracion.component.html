@@ -1,0 +1,64 @@
+<h1>Configuración</h1>
+
+@if (cargando()) {
+  <p>Cargando...</p>
+} @else {
+  <div class="contenedor">
+    <form class="panel" (ngSubmit)="guardar()">
+      <h2>Datos de la clínica</h2>
+      <div class="fila-form">
+        <label>Nombre*</label>
+        <input type="text" name="nombre" [(ngModel)]="nombre" required />
+      </div>
+      <div class="fila-form">
+        <label>Dirección</label>
+        <input type="text" name="direccion" [(ngModel)]="direccion" />
+      </div>
+      <div class="fila-form">
+        <label>Teléfono</label>
+        <input type="text" name="telefono" [(ngModel)]="telefono" />
+      </div>
+      <div class="fila-form">
+        <label>Email de contacto</label>
+        <input type="email" name="emailContacto" [(ngModel)]="emailContacto" />
+      </div>
+
+      @if (error()) {
+        <p class="error">{{ error() }}</p>
+      }
+      @if (guardado()) {
+        <p class="ok">Guardado.</p>
+      }
+
+      <button type="submit" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando...' : 'Guardar cambios' }}
+      </button>
+    </form>
+
+    <div class="panel">
+      <h2>Logo</h2>
+      @if (logoUrl()) {
+        <img [src]="logoUrl()" class="logo-preview" alt="Logo de la clínica" />
+      } @else {
+        <p class="sin-logo">Todavía no subiste un logo.</p>
+      }
+      <input type="file" accept=".jpg,.jpeg,.png,.webp,.svg" (change)="onSeleccionarLogo($event)" [disabled]="subiendoLogo()" />
+      @if (subiendoLogo()) {
+        <p>Subiendo...</p>
+      }
+      @if (errorLogo()) {
+        <p class="error">{{ errorLogo() }}</p>
+      }
+    </div>
+
+    <div class="panel">
+      <h2>Otras configuraciones</h2>
+      <ul class="lista-enlaces">
+        <li><a [routerLink]="['/disponibilidad']">Horarios por odontólogo</a></li>
+        <li><a [routerLink]="['/tratamientos']">Duración y precio de tratamientos</a></li>
+        <li><a [routerLink]="['/odontologos']">Colores y datos de odontólogos</a></li>
+        <li><a [routerLink]="['/sedes']">Sedes (si atendés en más de un lugar)</a></li>
+      </ul>
+    </div>
+  </div>
+}

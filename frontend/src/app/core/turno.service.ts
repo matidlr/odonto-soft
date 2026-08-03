@@ -8,6 +8,7 @@ export type TurnoEstado = 'Solicitado' | 'Confirmado' | 'Cancelado' | 'Completad
 export interface Turno {
   id: string;
   odontologoId: string;
+  sedeId: string | null;
   pacienteId: string;
   pacienteNombre: string;
   tipoTratamientoId: string | null;
@@ -19,6 +20,7 @@ export interface Turno {
 export interface ReservarTurnoManualRequest {
   pacienteId: string;
   odontologoId: string;
+  sedeId?: string;
   tipoTratamientoId?: string;
   fechaHora: string;
   duracionMinutos?: number;
@@ -44,10 +46,13 @@ export interface TurnoDelDia {
   tipoTratamientoId: string | null;
   duracionMinutos: number;
   estado: TurnoEstado;
+  otraSede: boolean;
+  sedeNombre: string | null;
 }
 
 export interface DiaAgenda {
   fecha: string;
+  sedeId: string | null;
   todoElDiaBloqueado: boolean;
   todoElDiaBloqueadoId: string | null;
   ventanas: VentanaHoraria[];
@@ -73,8 +78,9 @@ export class TurnoService {
     return firstValueFrom(this.http.get<Turno[]>(`${API_BASE_URL}/turnos`, { params }));
   }
 
-  getDia(odontologoId: string, fecha: Date): Promise<DiaAgenda> {
-    const params = { odontologoId, fecha: formatoFecha(fecha) };
+  getDia(odontologoId: string, fecha: Date, sedeId?: string): Promise<DiaAgenda> {
+    const params: Record<string, string> = { odontologoId, fecha: formatoFecha(fecha) };
+    if (sedeId) params['sedeId'] = sedeId;
     return firstValueFrom(this.http.get<DiaAgenda>(`${API_BASE_URL}/turnos/dia`, { params }));
   }
 

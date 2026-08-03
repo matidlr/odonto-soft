@@ -108,6 +108,18 @@ public class AuthController : ControllerBase
         _db.Tenants.Add(tenant);
         _db.Usuarios.Add(usuario);
         _db.Odontologos.Add(odontologo);
+
+        // Todo odontólogo arranca con una sede Principal (su consultorio),
+        // para poder cargar horarios y turnos desde el primer momento. Si
+        // más adelante trabaja en otro lugar, agrega una sede adicional.
+        _db.Sedes.Add(new Sede
+        {
+            TenantId = tenant.Id,
+            OdontologoId = odontologo.Id,
+            Nombre = "Principal",
+            EsPrincipal = true
+        });
+
         await _db.SaveChangesAsync(ct);
 
         return Ok(new { tenantId = tenant.Id, estado = tenant.Estado.ToString() });

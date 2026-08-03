@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { OdontologoContextoService } from '../../core/odontologo-contexto.service';
 import { Paciente, PacienteService } from '../../core/paciente.service';
 import { DisponibilidadService } from '../../core/disponibilidad.service';
+import { Sede, SedeService } from '../../core/sede.service';
 import { TipoTratamiento, TipoTratamientoService } from '../../core/tipo-tratamiento.service';
 import { DiaAgenda, Turno, TurnoDelDia, TurnoEstado, TurnoService } from '../../core/turno.service';
 
@@ -13,7 +14,7 @@ const PASO_MINUTOS = 30;
 
 export interface SlotDia {
   hora: string; // "HH:mm"
-  estado: 'libre' | 'reservado' | 'bloqueado';
+  estado: 'libre' | 'reservado' | 'bloqueado' | 'otraSede';
   turno?: TurnoDelDia;
 }
 
@@ -61,6 +62,8 @@ export class AgendaComponent implements OnInit {
 
   pacientes = signal<Paciente[]>([]);
   tiposTratamiento = signal<TipoTratamiento[]>([]);
+  sedes = signal<Sede[]>([]);
+  sedeSeleccionada = signal<string>('');
 
   modoBloqueo = signal(false);
   procesandoBloqueo = signal(false);
@@ -129,9 +132,14 @@ export class AgendaComponent implements OnInit {
         (t) => m >= parseHora(t.horaInicio) && m < parseHora(t.horaFin)
       );
 
+      let estado: SlotDia['estado'] = 'libre';
+      if (turno?.otraSede) estado = 'otraSede';
+      else if (turno) estado = 'reservado';
+      else if (bloqueado) estado = 'bloqueado';
+
       slots.push({
         hora: formatHora(m),
-        estado: turno ? 'reservado' : bloqueado ? 'bloqueado' : 'libre',
+        estado,
         turno
       });
     }
@@ -143,14 +151,16 @@ export class AgendaComponent implements OnInit {
     private turnoService: TurnoService,
     private pacienteService: PacienteService,
     private tipoTratamientoService: TipoTratamientoService,
-    private disponibilidadService: DisponibilidadService
+    private disponibilidadService: DisponibilidadService,
+    private sedeService: SedeService
   ) {
     // Cambió el odontólogo elegido en el navbar: recargamos todo.
     effect(() => {
-      this.contexto.seleccionadoId();
+      const odontologoId = this.contexto.seleccionadoId();
       this.cargarMes();
       this.diaDetalle.set(null);
       this.diaSeleccionado.set(null);
+      if (odontologoId) this.cargarSedes(odontologoId);
     });
   }
 
@@ -159,6 +169,19 @@ export class AgendaComponent implements OnInit {
       this.pacienteService.getAll().then((v) => this.pacientes.set(v)),
       this.tipoTratamientoService.getAll().then((v) => this.tiposTratamiento.set(v))
     ]);
+  }
+
+  async cargarSedes(odontologoId: string): Promise<void> {
+    const sedes = await this.sedeService.getAll(odontologoId);
+    this.sedes.set(sedes);
+    const principal = sedes.find((s) => s.esPrincipal) ?? sedes[0];
+    this.sedeSeleccionada.set(principal?.id ?? '');
+  }
+
+  async cambiarSede(sedeId: string): Promise<void> {
+    this.sedeSeleccionada.set(sedeId);
+    this.diaDetalle.set(null);
+    if (this.diaSeleccionado()) await this.cargarDia();
   }
 
   async cargarMes(): Promise<void> {
@@ -215,7 +238,7 @@ export class AgendaComponent implements OnInit {
 
     this.cargandoDia.set(true);
     try {
-      this.diaDetalle.set(await this.turnoService.getDia(odontologoId, dia));
+      this.diaDetalle.set(await this.turnoService.getDia(odontologoId, dia, this.sedeSeleccionada() || undefined));
     } catch {
       this.error.set('No se pudo cargar la disponibilidad de ese día.');
     } finally {
@@ -225,6 +248,11 @@ export class AgendaComponent implements OnInit {
 
   async clicSlot(slot: SlotDia): Promise<void> {
     this.errorTurno.set(null);
+
+    if (slot.estado === 'otraSede') {
+      // Ocupado en otra sede del mismo odontólogo: no se puede tocar acá.
+      return;
+    }
 
     if (slot.estado === 'reservado') {
       this.turnoSeleccionado.set(slot.turno ?? null);
@@ -273,6 +301,7 @@ export class AgendaComponent implements OnInit {
         const fin = formatHora(parseHora(slot.hora) + PASO_MINUTOS);
         await this.disponibilidadService.crear({
           odontologoId,
+          sedeId: this.sedeSeleccionada() || undefined,
           tipo: 'Excepcion',
           fecha: claveFecha(dia),
           todoElDia: false,
@@ -302,6 +331,7 @@ export class AgendaComponent implements OnInit {
       } else {
         await this.disponibilidadService.crear({
           odontologoId,
+          sedeId: this.sedeSeleccionada() || undefined,
           tipo: 'Excepcion',
           fecha: claveFecha(dia),
           todoElDia: true,
@@ -339,6 +369,7 @@ export class AgendaComponent implements OnInit {
       await this.turnoService.crear({
         pacienteId: this.nuevoPacienteId,
         odontologoId,
+        sedeId: this.sedeSeleccionada() || undefined,
         tipoTratamientoId: this.nuevoTipoTratamientoId || undefined,
         fechaHora: new Date(`${claveFecha(dia)}T${hora}:00`).toISOString(),
         duracionMinutos

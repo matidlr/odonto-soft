@@ -8,6 +8,7 @@ import {
 } from '../../core/disponibilidad.service';
 import { OdontologoContextoService } from '../../core/odontologo-contexto.service';
 import { Odontologo, OdontologoService } from '../../core/odontologo.service';
+import { Sede, SedeService } from '../../core/sede.service';
 
 const DIAS: DiaSemana[] = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'];
 
@@ -22,6 +23,7 @@ export class DisponibilidadComponent implements OnInit {
   dias = DIAS;
 
   odontologos = signal<Odontologo[]>([]);
+  sedes = signal<Sede[]>([]);
   reglas = signal<Disponibilidad[]>([]);
   cargando = signal(true);
   mostrarForm = signal(false);
@@ -29,6 +31,7 @@ export class DisponibilidadComponent implements OnInit {
   error = signal<string | null>(null);
 
   odontologoSeleccionado = '';
+  sedeSeleccionada = '';
 
   // Formulario de alta
   tipo: TipoDisponibilidad = 'Recurrente';
@@ -42,6 +45,7 @@ export class DisponibilidadComponent implements OnInit {
   constructor(
     private disponibilidadService: DisponibilidadService,
     private odontologoService: OdontologoService,
+    private sedeService: SedeService,
     public contexto: OdontologoContextoService
   ) {}
 
@@ -54,17 +58,24 @@ export class DisponibilidadComponent implements OnInit {
         (seleccionadoEnNavbar && this.odontologos().some((o) => o.id === seleccionadoEnNavbar)
           ? seleccionadoEnNavbar
           : this.odontologos()[0].id);
-      await this.cargarReglas();
+      await this.cambiarOdontologo();
     } else {
       this.cargando.set(false);
     }
+  }
+
+  async cambiarOdontologo(): Promise<void> {
+    this.sedes.set(await this.sedeService.getAll(this.odontologoSeleccionado));
+    const principal = this.sedes().find((s) => s.esPrincipal) ?? this.sedes()[0];
+    this.sedeSeleccionada = principal?.id ?? '';
+    await this.cargarReglas();
   }
 
   async cargarReglas(): Promise<void> {
     if (!this.odontologoSeleccionado) return;
     this.cargando.set(true);
     try {
-      this.reglas.set(await this.disponibilidadService.getAll(this.odontologoSeleccionado));
+      this.reglas.set(await this.disponibilidadService.getAll(this.odontologoSeleccionado, this.sedeSeleccionada || undefined));
     } finally {
       this.cargando.set(false);
     }
@@ -76,6 +87,7 @@ export class DisponibilidadComponent implements OnInit {
     try {
       await this.disponibilidadService.crear({
         odontologoId: this.odontologoSeleccionado,
+        sedeId: this.sedeSeleccionada || undefined,
         tipo: this.tipo,
         diaSemana: this.tipo === 'Recurrente' ? this.diaSemana : undefined,
         fecha: this.tipo === 'Excepcion' ? this.fecha : undefined,

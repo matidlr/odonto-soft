@@ -24,6 +24,15 @@ public class TurnosController : ControllerBase
         _db = db;
     }
 
+    /// <summary>Sede a usar cuando no se especifica una: la Principal del odontólogo.</summary>
+    private async Task<Guid?> ResolverSedeId(Guid odontologoId, Guid? sedeIdPedido, CancellationToken ct)
+    {
+        if (sedeIdPedido is Guid pedida) return pedida;
+
+        var principal = await _db.Sedes.FirstOrDefaultAsync(s => s.OdontologoId == odontologoId && s.EsPrincipal, ct);
+        return principal?.Id;
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] DateTime? desde,
@@ -44,6 +53,7 @@ public class TurnosController : ControllerBase
             {
                 t.Id,
                 t.OdontologoId,
+                t.SedeId,
                 t.PacienteId,
                 PacienteNombre = t.Paciente.Nombre,
                 t.TipoTratamientoId,
@@ -67,26 +77,32 @@ public class TurnosController : ControllerBase
         string PacienteNombre,
         Guid? TipoTratamientoId,
         int DuracionMinutos,
-        string Estado);
+        string Estado,
+        bool OtraSede,
+        string? SedeNombre);
 
     /// <summary>
     /// Vista de un día puntual para el calendario de la agenda: las
     /// ventanas habilitadas y los bloqueos (resueltos a partir de las
-    /// reglas de Disponibilidad para esa fecha) más los turnos ya
-    /// reservados. El frontend arma la grilla de horarios combinando todo
-    /// esto; acá solo resolvemos las reglas, igual que en el booking público.
+    /// reglas de Disponibilidad de la sede indicada) más los turnos ya
+    /// reservados. Los turnos que devolvemos son de TODAS las sedes del
+    /// odontólogo ese día (marcados con OtraSede) porque un turno en
+    /// cualquier sede bloquea ese horario en todas las demás — nunca puede
+    /// estar agendado dos veces a la misma hora.
     /// </summary>
     [HttpGet("dia")]
-    public async Task<IActionResult> GetDia([FromQuery] Guid odontologoId, [FromQuery] DateTime fecha, CancellationToken ct)
+    public async Task<IActionResult> GetDia([FromQuery] Guid odontologoId, [FromQuery] DateTime fecha, [FromQuery] Guid? sedeId, CancellationToken ct)
     {
         var odontologo = await _db.Odontologos.FirstOrDefaultAsync(o => o.Id == odontologoId, ct);
         if (odontologo is null) return BadRequest(new { message = "Odontólogo inválido." });
+
+        var sedeActualId = await ResolverSedeId(odontologoId, sedeId, ct);
 
         var fechaSolo = fecha.Date;
         var diaSemana = fechaSolo.DayOfWeek.ADiaSemana();
 
         var reglas = await _db.Disponibilidades
-            .Where(d => d.OdontologoId == odontologoId &&
+            .Where(d => d.OdontologoId == odontologoId && d.SedeId == sedeActualId &&
                 ((d.Tipo == TipoDisponibilidad.Recurrente && d.DiaSemana == diaSemana) ||
                  (d.Tipo == TipoDisponibilidad.Excepcion && d.Fecha != null && d.Fecha.Value.Date == fechaSolo)))
             .ToListAsync(ct);
@@ -104,6 +120,9 @@ public class TurnosController : ControllerBase
             .Select(r => new BloqueoResponse(r.Id, r.HoraInicio!.Value.ToString(@"hh\:mm"), r.HoraFin!.Value.ToString(@"hh\:mm")))
             .ToList();
 
+        // Ojo: a propósito NO filtramos por sede acá. Un turno en cualquier
+        // sede del odontólogo ocupa ese horario en todas — así se refleja
+        // en la grilla (y así se evita que se pueda reservar "por encima").
         var turnosDelDia = await _db.Turnos
             .Where(t => t.OdontologoId == odontologoId && t.FechaHora.Date == fechaSolo && t.Estado != TurnoEstado.Cancelado)
             .OrderBy(t => t.FechaHora)
@@ -111,6 +130,8 @@ public class TurnosController : ControllerBase
             {
                 t.Id,
                 t.FechaHora,
+                t.SedeId,
+                SedeNombre = t.Sede != null ? t.Sede.Nombre : null,
                 t.PacienteId,
                 PacienteNombre = t.Paciente.Nombre,
                 t.TipoTratamientoId,
@@ -127,11 +148,14 @@ public class TurnosController : ControllerBase
             t.PacienteNombre,
             t.TipoTratamientoId,
             t.DuracionMinutos,
-            t.Estado)).ToList();
+            t.Estado,
+            t.SedeId != sedeActualId,
+            t.SedeNombre)).ToList();
 
         return Ok(new
         {
             fecha = fechaSolo.ToString("yyyy-MM-dd"),
+            sedeId = sedeActualId,
             todoElDiaBloqueado = reglaTodoElDiaBloqueado is not null,
             todoElDiaBloqueadoId = reglaTodoElDiaBloqueado?.Id,
             ventanas,
@@ -143,6 +167,7 @@ public class TurnosController : ControllerBase
     public record ReservarTurnoManualRequest(
         Guid PacienteId,
         Guid OdontologoId,
+        Guid? SedeId,
         Guid? TipoTratamientoId,
         DateTime FechaHora,
         // Si viene, pisa la duración del tipo de tratamiento (o el default
@@ -179,6 +204,9 @@ public class TurnosController : ControllerBase
             duracionMinutos = duracionManual;
         }
 
+        // A propósito, este chequeo NUNCA filtra por sede: el odontólogo no
+        // puede estar agendado a la misma hora en dos sedes distintas, así
+        // que se compara contra todos sus turnos sin importar en cuál sede.
         var fin = request.FechaHora.AddMinutes(duracionMinutos);
         var haySolapamiento = await _db.Turnos.AnyAsync(t =>
             t.OdontologoId == request.OdontologoId &&
@@ -187,16 +215,19 @@ public class TurnosController : ControllerBase
             request.FechaHora < t.FechaHora.AddMinutes(t.DuracionMinutos), ct);
 
         if (haySolapamiento)
-            return Conflict(new { message = "Ese horario ya no está disponible." });
+            return Conflict(new { message = "Ese horario ya no está disponible (el odontólogo ya tiene un turno a esa hora, en esta u otra sede)." });
 
         var tenantIdClaim = User.FindFirst("tenant_id")?.Value;
         if (!Guid.TryParse(tenantIdClaim, out var tenantId))
             return BadRequest(new { message = "No se pudo determinar el tenant del usuario." });
 
+        var sedeId = await ResolverSedeId(request.OdontologoId, request.SedeId, ct);
+
         var turno = new Turno
         {
             TenantId = tenantId,
             OdontologoId = request.OdontologoId,
+            SedeId = sedeId,
             PacienteId = request.PacienteId,
             TipoTratamientoId = request.TipoTratamientoId,
             FechaHora = request.FechaHora,

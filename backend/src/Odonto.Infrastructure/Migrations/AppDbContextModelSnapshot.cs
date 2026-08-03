@@ -222,6 +222,9 @@ namespace Odonto.Infrastructure.Migrations
                     b.Property<Guid>("OdontologoId")
                         .HasColumnType("char(36)");
 
+                    b.Property<Guid?>("SedeId")
+                        .HasColumnType("char(36)");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("char(36)");
 
@@ -234,6 +237,8 @@ namespace Odonto.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("OdontologoId");
+
+                    b.HasIndex("SedeId");
 
                     b.HasIndex("TenantId");
 
@@ -669,11 +674,51 @@ namespace Odonto.Infrastructure.Migrations
                     b.ToTable("Presupuestos");
                 });
 
+            modelBuilder.Entity("Odonto.Domain.Entities.Sede", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<bool>("Activa")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Direccion")
+                        .HasColumnType("longtext");
+
+                    b.Property<bool>("EsPrincipal")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<Guid>("OdontologoId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OdontologoId");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("Sedes");
+                });
+
             modelBuilder.Entity("Odonto.Domain.Entities.Tenant", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
+
+                    b.Property<string>("Direccion")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("EmailContacto")
+                        .HasColumnType("longtext");
 
                     b.Property<int>("Estado")
                         .HasColumnType("int");
@@ -683,6 +728,12 @@ namespace Odonto.Infrastructure.Migrations
 
                     b.Property<DateTime?>("FechaFinPrueba")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<string>("LogoContentType")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("LogoRutaEnDisco")
+                        .HasColumnType("longtext");
 
                     b.Property<string>("MercadoPagoPreapprovalId")
                         .HasColumnType("longtext");
@@ -697,6 +748,9 @@ namespace Odonto.Infrastructure.Migrations
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Telefono")
+                        .HasColumnType("longtext");
 
                     b.Property<bool>("TienePagoActivo")
                         .HasColumnType("tinyint(1)");
@@ -799,6 +853,9 @@ namespace Odonto.Infrastructure.Migrations
                     b.Property<Guid>("PacienteId")
                         .HasColumnType("char(36)");
 
+                    b.Property<Guid?>("SedeId")
+                        .HasColumnType("char(36)");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("char(36)");
 
@@ -808,6 +865,8 @@ namespace Odonto.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("PacienteId");
+
+                    b.HasIndex("SedeId");
 
                     b.HasIndex("TenantId");
 
@@ -963,6 +1022,11 @@ namespace Odonto.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Odonto.Domain.Entities.Sede", "Sede")
+                        .WithMany()
+                        .HasForeignKey("SedeId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("Odonto.Domain.Entities.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
@@ -970,6 +1034,8 @@ namespace Odonto.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Odontologo");
+
+                    b.Navigation("Sede");
 
                     b.Navigation("Tenant");
                 });
@@ -1180,6 +1246,25 @@ namespace Odonto.Infrastructure.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Odonto.Domain.Entities.Sede", b =>
+                {
+                    b.HasOne("Odonto.Domain.Entities.Odontologo", "Odontologo")
+                        .WithMany()
+                        .HasForeignKey("OdontologoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odonto.Domain.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Odontologo");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("Odonto.Domain.Entities.Tenant", b =>
                 {
                     b.HasOne("Odonto.Domain.Entities.Plan", "Plan")
@@ -1226,6 +1311,11 @@ namespace Odonto.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Odonto.Domain.Entities.Sede", "Sede")
+                        .WithMany()
+                        .HasForeignKey("SedeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Odonto.Domain.Entities.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
@@ -1240,6 +1330,8 @@ namespace Odonto.Infrastructure.Migrations
                     b.Navigation("Odontologo");
 
                     b.Navigation("Paciente");
+
+                    b.Navigation("Sede");
 
                     b.Navigation("Tenant");
 
