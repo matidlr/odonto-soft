@@ -16,4 +16,9 @@ public class Usuario
     public Rol Rol { get; set; }
     public bool EstaActivo { get; set; } = true;
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
+
+    // Bloqueo temporal por intentos de login fallidos (fuerza bruta contra
+    // una cuenta puntual, más allá del rate-limit general por IP).
+    public int IntentosFallidos { get; set; } = 0;
+    public DateTime? BloqueadoHasta { get; set; }
 }

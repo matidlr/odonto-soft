@@ -79,9 +79,44 @@ export class AuthService {
   }
 
   logout(): void {
+    // Mejor esfuerzo: avisamos al backend para que revoque el refresh token
+    // de esta sesión y borre la cookie. Si falla (sin conexión, etc.) igual
+    // cerramos la sesión local, que es lo que importa para el usuario.
+    firstValueFrom(this.http.post(`${API_BASE_URL}/auth/logout`, {})).catch(() => {});
+
     localStorage.removeItem(STORAGE_KEY);
     this.sesionSignal.set(null);
     this.router.navigateByUrl('/login');
+  }
+
+  /// Cierra la sesión en todos los dispositivos (revoca todos los refresh
+  /// tokens del usuario, no solo el de esta pestaña) y termina también la
+  /// sesión local.
+  async logoutTodos(): Promise<string> {
+    const response = await firstValueFrom(
+      this.http.post<{ message: string }>(`${API_BASE_URL}/auth/logout-todos`, {})
+    );
+    localStorage.removeItem(STORAGE_KEY);
+    this.sesionSignal.set(null);
+    this.router.navigateByUrl('/login');
+    return response.message;
+  }
+
+  // Usa el refresh token (cookie httpOnly, el navegador lo manda solo) para
+  // conseguir un access token nuevo sin que el usuario tenga que loguearse
+  // de nuevo. Devuelve null si el refresh token también venció o es
+  // inválido (ahí sí hay que loguearse de nuevo).
+  async refrescarToken(): Promise<string | null> {
+    try {
+      const response = await firstValueFrom(
+        this.http.post<LoginResponse>(`${API_BASE_URL}/auth/refresh`, {})
+      );
+      const sesionActual = this.sesionSignal();
+      this.guardarSesion({ ...response, email: sesionActual?.email ?? '' });
+      return response.token;
+    } catch {
+      return null;
+    }
   }
 
   private guardarSesion(sesion: DatosSesion): void {

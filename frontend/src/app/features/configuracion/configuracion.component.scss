@@ -73,6 +73,26 @@ button[type='submit'] {
   font-size: 0.9rem;
 }
 
+.ayuda {
+  color: #6b7280;
+  font-size: 0.85rem;
+  margin: 0 0 0.9rem;
+}
+
+.btn-peligro {
+  padding: 0.6rem 1rem;
+  border: 1px solid #b91c1c;
+  border-radius: 6px;
+  background: white;
+  color: #b91c1c;
+  cursor: pointer;
+  font-size: 0.85rem;
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
 .lista-enlaces {
   list-style: none;
   margin: 0;

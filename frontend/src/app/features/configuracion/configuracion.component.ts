@@ -1,6 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { AuthService } from '../../core/auth.service';
 import { Configuracion, ConfiguracionService } from '../../core/configuracion.service';
 
 @Component({
@@ -26,7 +27,14 @@ export class ConfiguracionComponent implements OnInit {
   subiendoLogo = signal(false);
   errorLogo = signal<string | null>(null);
 
-  constructor(private configuracionService: ConfiguracionService) {}
+  cerrandoTodos = signal(false);
+  mensajeCerrarTodos = signal<string | null>(null);
+  errorCerrarTodos = signal<string | null>(null);
+
+  constructor(
+    private configuracionService: ConfiguracionService,
+    private authService: AuthService
+  ) {}
 
   async ngOnInit(): Promise<void> {
     await this.cargar();
@@ -100,6 +108,22 @@ export class ConfiguracionComponent implements OnInit {
     } finally {
       this.subiendoLogo.set(false);
       input.value = '';
+    }
+  }
+
+  async cerrarSesionEnTodosLados(): Promise<void> {
+    if (!confirm('¿Cerrar sesión en todos los dispositivos donde iniciaste sesión?')) return;
+
+    this.errorCerrarTodos.set(null);
+    this.mensajeCerrarTodos.set(null);
+    this.cerrandoTodos.set(true);
+    try {
+      // Redirige al login solo, así que no hace falta hacer nada más acá.
+      await this.authService.logoutTodos();
+    } catch (err: unknown) {
+      const httpError = err as { error?: { message?: string } };
+      this.errorCerrarTodos.set(httpError?.error?.message ?? 'No se pudo cerrar la sesión en todos los dispositivos.');
+      this.cerrandoTodos.set(false);
     }
   }
 }

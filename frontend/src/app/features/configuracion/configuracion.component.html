@@ -52,6 +52,23 @@
     </div>
 
     <div class="panel">
+      <h2>Seguridad</h2>
+      <p class="ayuda">
+        Si sospechás que alguien más entró a tu cuenta, podés cerrar todas las sesiones activas
+        (en cualquier computadora o celular) de una vez. Vas a tener que volver a iniciar sesión acá.
+      </p>
+      <button type="button" class="btn-peligro" [disabled]="cerrandoTodos()" (click)="cerrarSesionEnTodosLados()">
+        {{ cerrandoTodos() ? 'Cerrando sesiones...' : 'Cerrar sesión en todos los dispositivos' }}
+      </button>
+      @if (mensajeCerrarTodos()) {
+        <p class="ok">{{ mensajeCerrarTodos() }}</p>
+      }
+      @if (errorCerrarTodos()) {
+        <p class="error">{{ errorCerrarTodos() }}</p>
+      }
+    </div>
+
+    <div class="panel">
       <h2>Otras configuraciones</h2>
       <ul class="lista-enlaces">
         <li><a [routerLink]="['/disponibilidad']">Horarios por odontólogo</a></li>

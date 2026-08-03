@@ -135,9 +135,14 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
+        // AllowCredentials es necesario para que el navegador mande/reciba
+        // la cookie httpOnly del refresh token entre front y back (son
+        // orígenes distintos: puertos diferentes). Por eso no se puede
+        // combinar con AllowAnyOrigin, tiene que ser un origen puntual.
         policy.WithOrigins(builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:4200")
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 

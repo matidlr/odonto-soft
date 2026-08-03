@@ -20,7 +20,6 @@ namespace Odonto.Api.Controllers;
 // por minuto por IP, ver Program.cs.
 [ApiController]
 [Route("api/auth")]
-[AllowAnonymous]
 [EnableRateLimiting("auth")]
 public class AuthController : ControllerBase
 {
@@ -28,14 +27,21 @@ public class AuthController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly IEmailSender _emailSender;
     private readonly ILogger<AuthController> _logger;
+    private readonly IWebHostEnvironment _environment;
     private readonly PasswordHasher<Usuario> _passwordHasher = new();
 
-    public AuthController(AppDbContext db, IConfiguration configuration, IEmailSender emailSender, ILogger<AuthController> logger)
+    public AuthController(
+        AppDbContext db,
+        IConfiguration configuration,
+        IEmailSender emailSender,
+        ILogger<AuthController> logger,
+        IWebHostEnvironment environment)
     {
         _db = db;
         _configuration = configuration;
         _emailSender = emailSender;
         _logger = logger;
+        _environment = environment;
     }
 
     public record RegistrarOdontologoRequest(
@@ -54,6 +60,7 @@ public class AuthController : ControllerBase
     /// pagando, el sistema suspende la cuenta solo (ver TenantEstadoService).
     /// </summary>
     [HttpPost("registrar-odontologo")]
+    [AllowAnonymous]
     public async Task<IActionResult> RegistrarOdontologo(RegistrarOdontologoRequest request, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
@@ -134,6 +141,7 @@ public class AuthController : ControllerBase
     /// link público ni lo va a usar un odontólogo.
     /// </summary>
     [HttpPost("bootstrap-superadmin")]
+    [AllowAnonymous]
     public async Task<IActionResult> BootstrapSuperAdmin(BootstrapSuperAdminRequest request, CancellationToken ct)
     {
         var expectedKey = _configuration["Bootstrap:Key"];
@@ -166,6 +174,7 @@ public class AuthController : ControllerBase
     /// único usuario con Rol=SuperAdmin y le resetea la contraseña.
     /// </summary>
     [HttpPost("reset-superadmin-password")]
+    [AllowAnonymous]
     public async Task<IActionResult> ResetSuperAdminPassword(ResetSuperAdminPasswordRequest request, CancellationToken ct)
     {
         var expectedKey = _configuration["Bootstrap:Key"];
@@ -187,7 +196,14 @@ public class AuthController : ControllerBase
 
     public record LoginRequest(string Email, string Password);
 
+    // Tras esta cantidad de intentos fallidos seguidos, la cuenta queda
+    // bloqueada por un rato (más allá del rate-limit por IP, que no protege
+    // si el ataque viene rotando de IP).
+    private const int MaxIntentosFallidos = 5;
+    private static readonly TimeSpan DuracionBloqueo = TimeSpan.FromMinutes(15);
+
     [HttpPost("login")]
+    [AllowAnonymous]
     public async Task<IActionResult> Login(LoginRequest request, CancellationToken ct)
     {
         var usuario = await _db.Usuarios
@@ -201,21 +217,140 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Credenciales inválidas." });
         }
 
+        if (usuario.BloqueadoHasta is DateTime bloqueadoHasta && bloqueadoHasta > DateTime.UtcNow)
+        {
+            _logger.LogWarning("Login rechazado (cuenta bloqueada) para {Email} desde {IP}",
+                request.Email, HttpContext.Connection.RemoteIpAddress);
+            return StatusCode(StatusCodes.Status423Locked, new
+            {
+                message = "Esta cuenta está bloqueada temporalmente por varios intentos fallidos. Probá de nuevo en unos minutos."
+            });
+        }
+
         var resultado = _passwordHasher.VerifyHashedPassword(usuario, usuario.PasswordHash, request.Password);
         if (resultado == PasswordVerificationResult.Failed)
         {
+            usuario.IntentosFallidos++;
+            if (usuario.IntentosFallidos >= MaxIntentosFallidos)
+            {
+                usuario.BloqueadoHasta = DateTime.UtcNow.Add(DuracionBloqueo);
+                usuario.IntentosFallidos = 0;
+                _logger.LogWarning("Cuenta bloqueada por {Minutos} minutos tras intentos fallidos repetidos: {Email} desde {IP}",
+                    DuracionBloqueo.TotalMinutes, request.Email, HttpContext.Connection.RemoteIpAddress);
+            }
+            await _db.SaveChangesAsync(ct);
+
             _logger.LogWarning("Login fallido (contraseña incorrecta) para {Email} desde {IP}",
                 request.Email, HttpContext.Connection.RemoteIpAddress);
             return Unauthorized(new { message = "Credenciales inválidas." });
         }
 
+        usuario.IntentosFallidos = 0;
+        usuario.BloqueadoHasta = null;
+        await _db.SaveChangesAsync(ct);
+
         var token = GenerarToken(usuario);
+        await EmitirRefreshTokenAsync(usuario, ct);
         return Ok(new { token, rol = usuario.Rol.ToString(), tenantId = usuario.TenantId });
+    }
+
+    /// <summary>
+    /// Cambia el access token (JWT) por uno nuevo usando el refresh token
+    /// guardado en la cookie httpOnly. El frontend llama esto solo cuando un
+    /// pedido normal le devuelve 401 (el access token de 20 minutos venció),
+    /// así el usuario no tiene que volver a loguearse cada rato.
+    /// </summary>
+    [HttpPost("refresh")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Refresh(CancellationToken ct)
+    {
+        var cookieToken = Request.Cookies[RefreshCookieName];
+        if (string.IsNullOrEmpty(cookieToken))
+            return Unauthorized(new { message = "No hay sesión para renovar." });
+
+        var hash = HashToken(cookieToken);
+        var refreshToken = await _db.RefreshTokens
+            .Include(r => r.Usuario)
+            .FirstOrDefaultAsync(r => r.TokenHash == hash, ct);
+
+        if (refreshToken is null || refreshToken.Revocado || refreshToken.FechaExpiracion < DateTime.UtcNow
+            || refreshToken.Usuario is null || !refreshToken.Usuario.EstaActivo)
+        {
+            Response.Cookies.Delete(RefreshCookieName, CookieOptionsBase());
+            return Unauthorized(new { message = "La sesión venció. Iniciá sesión de nuevo." });
+        }
+
+        // Rotación: el refresh token usado queda revocado y se emite uno
+        // nuevo. Si alguien roba un refresh token viejo y lo intenta usar
+        // después de que el dueño ya lo rotó, esto lo detectaría (quedaría
+        // marcado Revocado), aunque hoy no cortamos toda la sesión ante eso.
+        refreshToken.Revocado = true;
+        refreshToken.FechaRevocado = DateTime.UtcNow;
+
+        var usuario = refreshToken.Usuario;
+        var nuevoToken = GenerarToken(usuario);
+        await EmitirRefreshTokenAsync(usuario, ct);
+
+        return Ok(new { token = nuevoToken, rol = usuario.Rol.ToString(), tenantId = usuario.TenantId });
+    }
+
+    /// <summary>Cierra la sesión actual: revoca el refresh token de esta cookie nada más.</summary>
+    [HttpPost("logout")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Logout(CancellationToken ct)
+    {
+        var cookieToken = Request.Cookies[RefreshCookieName];
+        if (!string.IsNullOrEmpty(cookieToken))
+        {
+            var hash = HashToken(cookieToken);
+            var refreshToken = await _db.RefreshTokens.FirstOrDefaultAsync(r => r.TokenHash == hash, ct);
+            if (refreshToken is not null && !refreshToken.Revocado)
+            {
+                refreshToken.Revocado = true;
+                refreshToken.FechaRevocado = DateTime.UtcNow;
+                await _db.SaveChangesAsync(ct);
+            }
+        }
+
+        Response.Cookies.Delete(RefreshCookieName, CookieOptionsBase());
+        return Ok(new { message = "Sesión cerrada." });
+    }
+
+    /// <summary>
+    /// Cierra la sesión en todos los dispositivos: revoca todos los refresh
+    /// tokens del usuario logueado (no solo el de esta cookie). Útil si
+    /// sospechás que alguien más tiene acceso a tu cuenta.
+    /// </summary>
+    [HttpPost("logout-todos")]
+    [Authorize]
+    public async Task<IActionResult> LogoutTodos(CancellationToken ct)
+    {
+        var usuarioIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(usuarioIdClaim, out var usuarioId))
+            return Unauthorized();
+
+        var tokens = await _db.RefreshTokens
+            .Where(r => r.UsuarioId == usuarioId && !r.Revocado)
+            .ToListAsync(ct);
+
+        foreach (var t in tokens)
+        {
+            t.Revocado = true;
+            t.FechaRevocado = DateTime.UtcNow;
+        }
+        await _db.SaveChangesAsync(ct);
+
+        _logger.LogWarning("Cierre de sesión en todos los dispositivos para usuario {UsuarioId} desde {IP}",
+            usuarioId, HttpContext.Connection.RemoteIpAddress);
+
+        Response.Cookies.Delete(RefreshCookieName, CookieOptionsBase());
+        return Ok(new { message = $"Se cerraron {tokens.Count} sesión(es) activa(s)." });
     }
 
     public record OlvidePasswordRequest(string Email);
 
     [HttpPost("olvide-password")]
+    [AllowAnonymous]
     public async Task<IActionResult> OlvidePassword(OlvidePasswordRequest request, CancellationToken ct)
     {
         // Siempre devolvemos el mismo mensaje genérico, exista o no el email,
@@ -259,6 +394,7 @@ public class AuthController : ControllerBase
     public record ResetearPasswordRequest(string Token, string NewPassword);
 
     [HttpPost("resetear-password")]
+    [AllowAnonymous]
     public async Task<IActionResult> ResetearPassword(ResetearPasswordRequest request, CancellationToken ct)
     {
         // No confiamos solo en la validación del frontend: esto se puede
@@ -304,13 +440,61 @@ public class AuthController : ControllerBase
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
+        // Access token de vida corta a propósito: si se filtra (XSS, log,
+        // etc.) la ventana de uso es chica. La sesión "larga" la sostiene el
+        // refresh token, que vive aparte en una cookie httpOnly.
         var token = new JwtSecurityToken(
             issuer: _configuration["Jwt:Issuer"],
             audience: _configuration["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(8),
+            expires: DateTime.UtcNow.AddMinutes(20),
             signingCredentials: creds);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+
+    private const string RefreshCookieName = "odonto_refresh";
+    private static readonly TimeSpan DuracionRefreshToken = TimeSpan.FromDays(30);
+
+    private async Task EmitirRefreshTokenAsync(Usuario usuario, CancellationToken ct)
+    {
+        var tokenBytes = RandomNumberGenerator.GetBytes(32);
+        var tokenPlano = Convert.ToBase64String(tokenBytes)
+            .Replace("+", "-").Replace("/", "_").Replace("=", "");
+
+        _db.RefreshTokens.Add(new RefreshToken
+        {
+            UsuarioId = usuario.Id,
+            TokenHash = HashToken(tokenPlano),
+            FechaExpiracion = DateTime.UtcNow.Add(DuracionRefreshToken)
+        });
+        await _db.SaveChangesAsync(ct);
+
+        var options = CookieOptionsBase();
+        options.Expires = DateTimeOffset.UtcNow.Add(DuracionRefreshToken);
+        Response.Cookies.Append(RefreshCookieName, tokenPlano, options);
+    }
+
+    // No guardamos el refresh token en texto plano en la base: si alguien
+    // accediera a la base de datos, no podría usarlo directamente.
+    private static string HashToken(string tokenPlano)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(tokenPlano));
+        return Convert.ToHexString(bytes);
+    }
+
+    // Secure=true exige HTTPS, así que en Development (Kestrel solo escucha
+    // por http en local) lo desactivamos para poder probar; en cualquier
+    // otro ambiente va con Secure=true siempre.
+    // TODO producción: si el día de mañana front y back quedan en
+    // subdominios distintos (app.tudominio.com / api.tudominio.com), hay
+    // que agregar Domain=".tudominio.com" acá para que la cookie viaje
+    // entre los dos. Hoy, en localhost con distinto puerto, no hace falta.
+    private CookieOptions CookieOptionsBase() => new()
+    {
+        HttpOnly = true,
+        Secure = !_environment.IsDevelopment(),
+        SameSite = SameSiteMode.Lax,
+        Path = "/api/auth"
+    };
 }

@@ -26,6 +26,7 @@ public class AppDbContext : DbContext
     public DbSet<EventoOdontograma> EventosOdontograma => Set<EventoOdontograma>();
     public DbSet<ArchivoOdontograma> ArchivosOdontograma => Set<ArchivoOdontograma>();
     public DbSet<TokenResetPassword> TokensResetPassword => Set<TokenResetPassword>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<FichaMedica> FichasMedicas => Set<FichaMedica>();
     public DbSet<NotaEvolucion> NotasEvolucion => Set<NotaEvolucion>();
     public DbSet<Plan> Planes => Set<Plan>();
@@ -164,6 +165,14 @@ public class AppDbContext : DbContext
             b.HasIndex(t => t.Token).IsUnique();
             // Sin HasQueryFilter a propósito: es una tabla de sistema, no de
             // negocio por tenant, y se consulta en endpoints anónimos.
+        });
+
+        modelBuilder.Entity<RefreshToken>(b =>
+        {
+            b.HasOne(r => r.Usuario).WithMany().HasForeignKey(r => r.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+            b.HasIndex(r => r.TokenHash).IsUnique();
+            b.HasIndex(r => r.UsuarioId);
+            // Sin HasQueryFilter a propósito, mismo motivo que TokenResetPassword.
         });
 
         modelBuilder.Entity<FichaMedica>(b =>
