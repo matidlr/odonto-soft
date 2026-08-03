@@ -45,6 +45,18 @@ export interface CrearNotaEvolucionRequest {
   fecha?: string;
 }
 
+export interface RegistroAuditoria {
+  id: string;
+  fecha: string;
+  usuarioNombre: string | null;
+  usuarioEmail: string | null;
+  entidad: string;
+  accion: string;
+  campo: string | null;
+  valorAnterior: string | null;
+  valorNuevo: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class HistorialClinicoService {
   constructor(private http: HttpClient) {}
@@ -79,6 +91,12 @@ export class HistorialClinicoService {
         `${API_BASE_URL}/pacientes/${pacienteId}/notas-evolucion`,
         datos
       )
+    );
+  }
+
+  getAuditoria(pacienteId: string): Promise<RegistroAuditoria[]> {
+    return firstValueFrom(
+      this.http.get<RegistroAuditoria[]>(`${API_BASE_URL}/pacientes/${pacienteId}/auditoria`)
     );
   }
 }

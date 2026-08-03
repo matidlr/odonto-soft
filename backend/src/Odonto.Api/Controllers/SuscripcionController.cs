@@ -36,9 +36,20 @@ public class SuscripcionController : ControllerBase
         if (!Guid.TryParse(tenantIdClaim, out var tenantId))
             return BadRequest(new { message = "No se pudo determinar el tenant del usuario (¿sos SuperAdmin?)." });
 
-        var email = string.IsNullOrWhiteSpace(request.PayerEmailPrueba)
-            ? User.FindFirst("email")?.Value
-            : request.PayerEmailPrueba;
+        // El JWT ya no lleva el email (solo UserId, ClinicaId y Rol); si no
+        // vino uno de prueba, lo buscamos en la base a partir del UsuarioId.
+        var email = request.PayerEmailPrueba;
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            var usuarioIdClaim = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+            if (Guid.TryParse(usuarioIdClaim, out var usuarioId))
+            {
+                email = await _db.Usuarios.IgnoreQueryFilters()
+                    .Where(u => u.Id == usuarioId)
+                    .Select(u => u.Email)
+                    .FirstOrDefaultAsync(ct);
+            }
+        }
 
         if (string.IsNullOrWhiteSpace(email))
             return BadRequest(new { message = "No se pudo determinar el email del usuario." });

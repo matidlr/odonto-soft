@@ -17,10 +17,42 @@ namespace Odonto.Api.Controllers;
 public class HistorialClinicoController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly ILogger<HistorialClinicoController> _logger;
 
-    public HistorialClinicoController(AppDbContext db)
+    public HistorialClinicoController(AppDbContext db, ILogger<HistorialClinicoController> logger)
     {
         _db = db;
+        _logger = logger;
+    }
+
+    // Para el log de la app (ILogger) solo nos interesa quién hizo el
+    // cambio, no qué escribió: el contenido médico nunca va a un log de
+    // texto. El detalle campo por campo (valor anterior/nuevo) sí se
+    // guarda, pero en RegistrosAuditoria — la misma base protegida y
+    // aislada por tenant que el resto de la historia clínica, no un log.
+    private Guid? UsuarioIdActual()
+    {
+        var claim = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+        return Guid.TryParse(claim, out var id) ? id : null;
+    }
+
+    /// <summary>Agrega una fila de auditoría si el valor realmente cambió (evita ruido).</summary>
+    private void AuditarCampo(Guid tenantId, Guid pacienteId, string entidad, Guid entidadId, string accion, string campo, string? anterior, string? nuevo)
+    {
+        if (anterior == nuevo) return;
+
+        _db.RegistrosAuditoria.Add(new RegistroAuditoria
+        {
+            TenantId = tenantId,
+            PacienteId = pacienteId,
+            UsuarioId = UsuarioIdActual(),
+            Entidad = entidad,
+            EntidadId = entidadId,
+            Accion = accion,
+            Campo = campo,
+            ValorAnterior = anterior,
+            ValorNuevo = nuevo
+        });
     }
 
     public record FichaMedicaResponse(
@@ -68,11 +100,23 @@ public class HistorialClinicoController : ControllerBase
             return BadRequest(new { message = "No se pudo determinar el tenant del usuario." });
 
         var ficha = await _db.FichasMedicas.FirstOrDefaultAsync(f => f.PacienteId == pacienteId, ct);
+        var esNueva = ficha is null;
         if (ficha is null)
         {
             ficha = new FichaMedica { TenantId = tenantId, PacienteId = pacienteId };
             _db.FichasMedicas.Add(ficha);
         }
+
+        var accion = esNueva ? "Creado" : "Editado";
+
+        // Un renglón de auditoría por campo que realmente cambió, con el
+        // valor de antes y el de ahora — acá sí va el contenido, a
+        // diferencia del log de la app.
+        AuditarCampo(tenantId, pacienteId, "FichaMedica", ficha.Id, accion, "Alergias", ficha.Alergias, request.Alergias);
+        AuditarCampo(tenantId, pacienteId, "FichaMedica", ficha.Id, accion, "EnfermedadesPreexistentes", ficha.EnfermedadesPreexistentes, request.EnfermedadesPreexistentes);
+        AuditarCampo(tenantId, pacienteId, "FichaMedica", ficha.Id, accion, "MedicacionActual", ficha.MedicacionActual, request.MedicacionActual);
+        AuditarCampo(tenantId, pacienteId, "FichaMedica", ficha.Id, accion, "Habitos", ficha.Habitos, request.Habitos);
+        AuditarCampo(tenantId, pacienteId, "FichaMedica", ficha.Id, accion, "Observaciones", ficha.Observaciones, request.Observaciones);
 
         ficha.Alergias = request.Alergias;
         ficha.EnfermedadesPreexistentes = request.EnfermedadesPreexistentes;
@@ -82,6 +126,11 @@ public class HistorialClinicoController : ControllerBase
         ficha.FechaActualizacion = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);
+
+        // Solo quién/cuándo/a qué paciente — nunca el contenido (alergias,
+        // medicación, etc. son datos médicos, no van a un log).
+        _logger.LogInformation("Ficha médica editada para paciente {PacienteId} por usuario {UsuarioId}",
+            pacienteId, UsuarioIdActual());
 
         return Ok(new { message = "Ficha médica guardada." });
     }
@@ -184,8 +233,63 @@ public class HistorialClinicoController : ControllerBase
         };
 
         _db.NotasEvolucion.Add(nota);
+
+        // Una fila de auditoría por campo cargado (ValorAnterior vacío,
+        // ValorNuevo lo que escribió). Se guardan junto con la nota, en la
+        // misma transacción.
+        AuditarCampo(tenantId, pacienteId, "NotaEvolucion", nota.Id, "Creado", "Motivo", null, request.Motivo);
+        AuditarCampo(tenantId, pacienteId, "NotaEvolucion", nota.Id, "Creado", "Diagnostico", null, request.Diagnostico);
+        AuditarCampo(tenantId, pacienteId, "NotaEvolucion", nota.Id, "Creado", "TratamientoRealizado", null, request.TratamientoRealizado);
+        AuditarCampo(tenantId, pacienteId, "NotaEvolucion", nota.Id, "Creado", "Evolucion", null, request.Evolucion);
+        AuditarCampo(tenantId, pacienteId, "NotaEvolucion", nota.Id, "Creado", "Medicacion", null, request.Medicacion);
+        AuditarCampo(tenantId, pacienteId, "NotaEvolucion", nota.Id, "Creado", "Observaciones", null, request.Observaciones);
+
         await _db.SaveChangesAsync(ct);
 
+        // Igual que arriba: solo metadata, nunca el contenido de la nota.
+        _logger.LogInformation("Nota de evolución agregada (id {NotaId}) para paciente {PacienteId} por usuario {UsuarioId}",
+            nota.Id, pacienteId, UsuarioIdActual());
+
         return Ok(new { nota.Id, nota.Fecha, nota.TurnoId });
+    }
+
+    public record RegistroAuditoriaResponse(
+        Guid Id,
+        DateTime Fecha,
+        string? UsuarioNombre,
+        string? UsuarioEmail,
+        string Entidad,
+        string Accion,
+        string? Campo,
+        string? ValorAnterior,
+        string? ValorNuevo);
+
+    /// <summary>
+    /// Auditoría de la historia clínica de este paciente: odontograma,
+    /// ficha médica y notas de evolución. Quién, cuándo, qué acción y el
+    /// valor anterior/nuevo cuando corresponde.
+    /// </summary>
+    [HttpGet("auditoria")]
+    public async Task<IActionResult> GetAuditoria(Guid pacienteId, CancellationToken ct)
+    {
+        var paciente = await _db.Pacientes.FirstOrDefaultAsync(p => p.Id == pacienteId, ct);
+        if (paciente is null) return NotFound(new { message = "Paciente no encontrado." });
+
+        var registros = await _db.RegistrosAuditoria
+            .Where(a => a.PacienteId == pacienteId)
+            .OrderByDescending(a => a.Fecha)
+            .Select(a => new RegistroAuditoriaResponse(
+                a.Id,
+                a.Fecha,
+                a.Usuario != null ? a.Usuario.Nombre : null,
+                a.Usuario != null ? a.Usuario.Email : null,
+                a.Entidad,
+                a.Accion,
+                a.Campo,
+                a.ValorAnterior,
+                a.ValorNuevo))
+            .ToListAsync(ct);
+
+        return Ok(registros);
     }
 }

@@ -18,6 +18,8 @@ export class PacientesComponent implements OnInit {
   guardando = signal(false);
   error = signal<string | null>(null);
   busqueda = signal('');
+  mostrarInactivos = signal(false);
+  accionandoId = signal<string | null>(null);
 
   // Si tiene valor, el form está editando ese paciente en vez de crear uno nuevo.
   editandoId = signal<string | null>(null);
@@ -64,9 +66,44 @@ export class PacientesComponent implements OnInit {
       const odontologoId = this.contexto.hayMasDeUno()
         ? (this.contexto.seleccionadoId() ?? undefined)
         : undefined;
-      this.pacientes.set(await this.pacienteService.getAll(odontologoId));
+      this.pacientes.set(await this.pacienteService.getAll(odontologoId, this.mostrarInactivos()));
     } finally {
       this.cargando.set(false);
+    }
+  }
+
+  async alternarMostrarInactivos(): Promise<void> {
+    this.mostrarInactivos.set(!this.mostrarInactivos());
+    await this.cargar();
+  }
+
+  async darDeBaja(p: Paciente): Promise<void> {
+    if (!confirm(`¿Dar de baja a ${p.nombre}? No aparece más en el listado, pero su historia clínica se conserva.`)) return;
+
+    this.error.set(null);
+    this.accionandoId.set(p.id);
+    try {
+      await this.pacienteService.eliminar(p.id);
+      await this.cargar();
+    } catch (err: unknown) {
+      const httpError = err as { error?: { message?: string } };
+      this.error.set(httpError?.error?.message ?? 'No se pudo dar de baja al paciente.');
+    } finally {
+      this.accionandoId.set(null);
+    }
+  }
+
+  async reactivar(p: Paciente): Promise<void> {
+    this.error.set(null);
+    this.accionandoId.set(p.id);
+    try {
+      await this.pacienteService.reactivar(p.id);
+      await this.cargar();
+    } catch (err: unknown) {
+      const httpError = err as { error?: { message?: string } };
+      this.error.set(httpError?.error?.message ?? 'No se pudo reactivar al paciente.');
+    } finally {
+      this.accionandoId.set(null);
     }
   }
 

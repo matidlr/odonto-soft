@@ -191,6 +191,9 @@ public class AuthController : ControllerBase
         superAdmin.PasswordHash = _passwordHasher.HashPassword(superAdmin, request.NewPassword);
         await _db.SaveChangesAsync(ct);
 
+        _logger.LogWarning("Contraseña de SuperAdmin reseteada (vía bootstrap key) para {Email} desde {IP}",
+            superAdmin.Email, HttpContext.Connection.RemoteIpAddress);
+
         return Ok(new { superAdmin.Email, message = "Contraseña actualizada." });
     }
 
@@ -248,6 +251,9 @@ public class AuthController : ControllerBase
         usuario.IntentosFallidos = 0;
         usuario.BloqueadoHasta = null;
         await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Login exitoso para {Email} desde {IP}",
+            request.Email, HttpContext.Connection.RemoteIpAddress);
 
         var token = GenerarToken(usuario);
         await EmitirRefreshTokenAsync(usuario, ct);
@@ -419,16 +425,24 @@ public class AuthController : ControllerBase
         tokenRow.Usado = true;
         await _db.SaveChangesAsync(ct);
 
+        _logger.LogWarning("Contraseña cambiada (vía link de reseteo) para {Email} desde {IP}",
+            usuario.Email, HttpContext.Connection.RemoteIpAddress);
+
         return Ok(new { message = "Contraseña actualizada. Ya podés iniciar sesión." });
     }
 
     private string GenerarToken(Usuario usuario)
     {
         var jwtKey = _configuration["Jwt:Key"]!;
+        // A propósito, el JWT lleva solo lo mínimo para identificar y
+        // autorizar al usuario (UserId, ClinicaId, Rol). Un JWT no está
+        // cifrado, solo firmado — cualquiera con el token puede leer su
+        // contenido en texto plano (jwt.io, por ejemplo), así que no va
+        // acá nada de email ni otro dato personal. Si algún endpoint
+        // necesita el email, lo busca en la base con el UsuarioId.
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, usuario.Id.ToString()),
-            new("email", usuario.Email),
             new("rol", usuario.Rol.ToString())
         };
 
@@ -490,11 +504,18 @@ public class AuthController : ControllerBase
     // subdominios distintos (app.tudominio.com / api.tudominio.com), hay
     // que agregar Domain=".tudominio.com" acá para que la cookie viaje
     // entre los dos. Hoy, en localhost con distinto puerto, no hace falta.
+    //
+    // SameSite=Strict (protección CSRF): esta cookie solo la manda el
+    // navegador en pedidos que salen del propio frontend (nuestro fetch a
+    // /api/auth/refresh, /logout, /logout-todos). Nunca hace falta que
+    // viaje en una navegación de otro sitio (no es un link ni un botón
+    // "Volver"), así que Strict no rompe nada acá y cierra la puerta a que
+    // un sitio malicioso la haga viajar de arrastre.
     private CookieOptions CookieOptionsBase() => new()
     {
         HttpOnly = true,
         Secure = !_environment.IsDevelopment(),
-        SameSite = SameSiteMode.Lax,
+        SameSite = SameSiteMode.Strict,
         Path = "/api/auth"
     };
 }

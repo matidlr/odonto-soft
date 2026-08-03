@@ -11,9 +11,10 @@ using Odonto.Api.Authorization;
 using Odonto.Infrastructure;
 using Odonto.Infrastructure.Persistence;
 
-// Por defecto, .NET remapea nombres de claims "conocidos" (email, sub, etc.)
-// a URIs largas de esquemas antiguos al validar el JWT. Lo desactivamos para
-// que los claims queden exactamente como los emitimos ("email", "rol", "tenant_id").
+// Por defecto, .NET remapea nombres de claims "conocidos" (sub, etc.) a URIs
+// largas de esquemas antiguos al validar el JWT. Lo desactivamos para que
+// los claims queden exactamente como los emitimos ("sub", "rol", "tenant_id" —
+// el JWT no lleva email ni otros datos personales, ver AuthController).
 JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -131,6 +132,17 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
+var corsAllowedOrigin = builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:4200";
+
+// Nunca en producción con el origen del frontend en http://. Localhost en
+// Development queda exceptuado porque ahí ni el propio backend habla https
+// (ver comentario más abajo sobre UseHttpsRedirection).
+if (!builder.Environment.IsDevelopment() && !corsAllowedOrigin.StartsWith("https://"))
+{
+    throw new InvalidOperationException(
+        "Cors:AllowedOrigin tiene que ser https:// fuera de Development. Valor actual: " + corsAllowedOrigin);
+}
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -139,7 +151,7 @@ builder.Services.AddCors(options =>
         // la cookie httpOnly del refresh token entre front y back (son
         // orígenes distintos: puertos diferentes). Por eso no se puede
         // combinar con AllowAnyOrigin, tiene que ser un origen puntual.
-        policy.WithOrigins(builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:4200")
+        policy.WithOrigins(corsAllowedOrigin)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();

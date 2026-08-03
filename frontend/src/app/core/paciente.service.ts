@@ -11,6 +11,7 @@ export interface Paciente {
   email: string | null;
   fechaNacimiento: string | null;
   odontologoPrincipalId: string | null;
+  activo: boolean;
 }
 
 export interface CrearPacienteRequest {
@@ -26,9 +27,10 @@ export interface CrearPacienteRequest {
 export class PacienteService {
   constructor(private http: HttpClient) {}
 
-  getAll(odontologoId?: string): Promise<Paciente[]> {
+  getAll(odontologoId?: string, incluirInactivos = false): Promise<Paciente[]> {
     const params: Record<string, string> = {};
     if (odontologoId) params['odontologoId'] = odontologoId;
+    if (incluirInactivos) params['incluirInactivos'] = 'true';
     return firstValueFrom(this.http.get<Paciente[]>(`${API_BASE_URL}/pacientes`, { params }));
   }
 
@@ -38,5 +40,13 @@ export class PacienteService {
 
   editar(id: string, datos: CrearPacienteRequest): Promise<{ id: string }> {
     return firstValueFrom(this.http.put<{ id: string }>(`${API_BASE_URL}/pacientes/${id}`, datos));
+  }
+
+  eliminar(id: string): Promise<{ message: string }> {
+    return firstValueFrom(this.http.delete<{ message: string }>(`${API_BASE_URL}/pacientes/${id}`));
+  }
+
+  reactivar(id: string): Promise<{ message: string }> {
+    return firstValueFrom(this.http.post<{ message: string }>(`${API_BASE_URL}/pacientes/${id}/reactivar`, {}));
   }
 }

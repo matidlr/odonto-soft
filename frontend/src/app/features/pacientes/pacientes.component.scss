@@ -65,14 +65,33 @@
 
 .buscador {
   margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
 
-  input {
+  input[type='text'] {
     width: 100%;
     max-width: 320px;
     padding: 0.5rem 0.75rem;
     border: 1px solid #ccc;
     border-radius: 6px;
   }
+
+  .check-inactivos {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: #555;
+    cursor: pointer;
+  }
+}
+
+.error {
+  color: #d02828;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
 }
 
 .tabla-pacientes {
@@ -105,4 +124,45 @@
   color: #2563eb;
   cursor: pointer;
   font-size: 0.8rem;
+}
+
+.btn-baja {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid #b91c1c;
+  border-radius: 6px;
+  background: white;
+  color: #b91c1c;
+  cursor: pointer;
+  font-size: 0.8rem;
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+.btn-reactivar {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid #16803c;
+  border-radius: 6px;
+  background: white;
+  color: #16803c;
+  cursor: pointer;
+  font-size: 0.8rem;
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+.fila-inactiva {
+  opacity: 0.6;
+}
+
+.etiqueta-baja {
+  font-size: 0.7rem;
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  margin-left: 0.4rem;
 }

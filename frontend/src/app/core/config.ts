@@ -1,5 +1,7 @@
-// Config simple del frontend. Más adelante, si hace falta, esto se puede
-// convertir en environment.ts/environment.development.ts "de verdad" con
-// file replacements de Angular para separar dev/prod. Por ahora, alcanza
-// con esto para desarrollo local.
-export const API_BASE_URL = 'http://localhost:5000/api';
+import { environment } from '../../environments/environment';
+
+// La URL de la API sale de environments/environment.ts (dev) o
+// environments/environment.production.ts (build de producción, ver
+// fileReplacements en angular.json). Así, un build de producción nunca
+// puede terminar apuntando a localhost por accidente.
+export const API_BASE_URL = environment.apiBaseUrl;

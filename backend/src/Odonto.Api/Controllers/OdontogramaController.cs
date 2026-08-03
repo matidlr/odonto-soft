@@ -203,6 +203,15 @@ public class OdontogramaController : ControllerBase
             fecha = request.Fecha ?? DateTime.UtcNow;
         }
 
+        // El estado "anterior" de este diente es el del evento más reciente
+        // ya cargado para el mismo paciente y pieza (o "Sano" si es el
+        // primer evento que se le carga a ese diente).
+        var eventoAnterior = await _db.EventosOdontograma
+            .Where(e => e.PacienteId == pacienteId && e.NumeroFdi == request.NumeroFdi)
+            .OrderByDescending(e => e.Fecha)
+            .FirstOrDefaultAsync(ct);
+        var estadoAnterior = eventoAnterior?.Estado ?? EstadoDiente.Sano;
+
         var evento = new EventoOdontograma
         {
             TenantId = tenantId,
@@ -218,6 +227,23 @@ public class OdontogramaController : ControllerBase
         };
 
         _db.EventosOdontograma.Add(evento);
+
+        var usuarioIdClaim = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+        Guid.TryParse(usuarioIdClaim, out var usuarioId);
+
+        _db.RegistrosAuditoria.Add(new RegistroAuditoria
+        {
+            TenantId = tenantId,
+            PacienteId = pacienteId,
+            UsuarioId = usuarioId,
+            Entidad = "EventoOdontograma",
+            EntidadId = evento.Id,
+            Accion = eventoAnterior is null ? "Creado" : "Editado",
+            Campo = $"Pieza {request.NumeroFdi} - Estado",
+            ValorAnterior = estadoAnterior.ToString(),
+            ValorNuevo = request.Estado.ToString()
+        });
+
         await _db.SaveChangesAsync(ct);
 
         return Ok(new { evento.Id, evento.Fecha, evento.TurnoId });

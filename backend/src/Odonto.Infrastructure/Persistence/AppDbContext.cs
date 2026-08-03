@@ -37,6 +37,7 @@ public class AppDbContext : DbContext
     public DbSet<Insumo> Insumos => Set<Insumo>();
     public DbSet<MovimientoStock> MovimientosStock => Set<MovimientoStock>();
     public DbSet<Consentimiento> Consentimientos => Set<Consentimiento>();
+    public DbSet<RegistroAuditoria> RegistrosAuditoria => Set<RegistroAuditoria>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -91,6 +92,11 @@ public class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(p => p.OdontologoPrincipalId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            // HasDefaultValue(true) para que los pacientes ya cargados (que
+            // no tenían esta columna) queden Activos al agregarla, en vez de
+            // desaparecer de los listados de golpe.
+            b.Property(p => p.Activo).HasDefaultValue(true);
 
             b.HasQueryFilter(p => _tenantContext.EsSuperAdmin || p.TenantId == _tenantContext.TenantId);
         });
@@ -274,6 +280,17 @@ public class AppDbContext : DbContext
             b.HasIndex(c => new { c.PacienteId, c.FechaCreacion });
 
             b.HasQueryFilter(c => _tenantContext.EsSuperAdmin || c.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<RegistroAuditoria>(b =>
+        {
+            b.HasOne(a => a.Tenant).WithMany().HasForeignKey(a => a.TenantId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne(a => a.Paciente).WithMany().HasForeignKey(a => a.PacienteId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(a => a.Usuario).WithMany().HasForeignKey(a => a.UsuarioId).OnDelete(DeleteBehavior.SetNull);
+
+            b.HasIndex(a => new { a.PacienteId, a.Fecha });
+
+            b.HasQueryFilter(a => _tenantContext.EsSuperAdmin || a.TenantId == _tenantContext.TenantId);
         });
     }
 }

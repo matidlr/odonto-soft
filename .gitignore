@@ -21,3 +21,9 @@ Thumbs.db
 # Nunca deben ir al repo público, ni locales ni de ningún ambiente.
 backend/uploads/
 **/uploads/
+
+# Backups de la base de datos: son datos reales de pacientes, nunca al repo.
+backups/
+
+# Credenciales de MySQL para los scripts de backup (usuario/contraseña).
+mysql-backup.cnf

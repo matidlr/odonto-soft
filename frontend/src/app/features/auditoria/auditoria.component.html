@@ -1,0 +1,48 @@
+<a class="volver" [routerLink]="['/pacientes']">← Volver a pacientes</a>
+
+<h1>Auditoría{{ paciente() ? ' — ' + paciente()!.nombre : '' }}</h1>
+<p class="ayuda">
+  Cada cambio en el odontograma, la ficha médica o las notas de evolución de este paciente,
+  con quién lo hizo y cuándo.
+</p>
+
+@if (error()) {
+  <p class="error">{{ error() }}</p>
+}
+
+@if (cargando()) {
+  <p>Cargando...</p>
+} @else if (registros().length === 0) {
+  <p class="vacio">Todavía no hay cambios registrados para este paciente.</p>
+} @else {
+  <table class="tabla-auditoria">
+    <thead>
+      <tr>
+        <th>Fecha y hora</th>
+        <th>Usuario</th>
+        <th>Sección</th>
+        <th>Acción</th>
+        <th>Campo</th>
+        <th>Antes</th>
+        <th>Después</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (r of registros(); track r.id) {
+        <tr>
+          <td>{{ r.fecha | date: 'dd/MM/yyyy HH:mm' }}</td>
+          <td>{{ r.usuarioNombre || r.usuarioEmail || 'Desconocido' }}</td>
+          <td>{{ nombreEntidad(r.entidad) }}</td>
+          <td>
+            <span class="etiqueta-accion" [class.creado]="r.accion === 'Creado'" [class.editado]="r.accion === 'Editado'">
+              {{ r.accion }}
+            </span>
+          </td>
+          <td>{{ r.campo || '-' }}</td>
+          <td class="valor">{{ r.valorAnterior || '(vacío)' }}</td>
+          <td class="valor">{{ r.valorNuevo || '(vacío)' }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

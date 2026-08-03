@@ -55,7 +55,15 @@
     [ngModel]="busqueda()"
     (ngModelChange)="busqueda.set($event)"
   />
+  <label class="check-inactivos">
+    <input type="checkbox" [ngModel]="mostrarInactivos()" (ngModelChange)="alternarMostrarInactivos()" />
+    Mostrar dados de baja
+  </label>
 </div>
+
+@if (error() && !mostrarForm()) {
+  <p class="error">{{ error() }}</p>
+}
 
 @if (cargando()) {
   <p>Cargando...</p>
@@ -76,12 +84,15 @@
         <th></th>
         <th></th>
         <th></th>
+        <th></th>
+        <th></th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
       @for (p of pacientesFiltrados(); track p.id) {
-        <tr>
-          <td>{{ p.nombre }}</td>
+        <tr [class.fila-inactiva]="!p.activo">
+          <td>{{ p.nombre }} @if (!p.activo) { <span class="etiqueta-baja">Dado de baja</span> }</td>
           <td>{{ p.dni || '-' }}</td>
           <td>{{ p.telefono || '-' }}</td>
           <td>{{ p.email || '-' }}</td>
@@ -91,7 +102,19 @@
           <td><a [routerLink]="['/pacientes', p.id, 'presupuestos']">Presupuestos</a></td>
           <td><a [routerLink]="['/pacientes', p.id, 'cobros']">Cobros</a></td>
           <td><a [routerLink]="['/pacientes', p.id, 'consentimientos']">Consentimientos</a></td>
+          <td><a [routerLink]="['/pacientes', p.id, 'auditoria']">Auditoría</a></td>
           <td><button type="button" class="btn-editar" (click)="editar(p)">Editar</button></td>
+          <td>
+            @if (p.activo) {
+              <button type="button" class="btn-baja" [disabled]="accionandoId() === p.id" (click)="darDeBaja(p)">
+                Dar de baja
+              </button>
+            } @else {
+              <button type="button" class="btn-reactivar" [disabled]="accionandoId() === p.id" (click)="reactivar(p)">
+                Reactivar
+              </button>
+            }
+          </td>
         </tr>
       }
     </tbody>

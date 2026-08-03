@@ -25,7 +25,23 @@ public class TenantsController : ControllerBase
         _logger = logger;
     }
 
-    private string? EmailDelSuperAdmin() => User.FindFirst("email")?.Value;
+    // El JWT ya no lleva el email (solo UserId, ClinicaId y Rol), así que
+    // para los logs de auditoría lo buscamos en la base a partir del
+    // UsuarioId del token. Son acciones poco frecuentes (activar/suspender/
+    // cambiar plan), así que una consulta extra acá no pesa.
+    private async Task<string> IdentificacionDelSuperAdmin(CancellationToken ct)
+    {
+        var usuarioIdClaim = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(usuarioIdClaim, out var usuarioId))
+            return "SuperAdmin desconocido";
+
+        var email = await _db.Usuarios.IgnoreQueryFilters()
+            .Where(u => u.Id == usuarioId)
+            .Select(u => u.Email)
+            .FirstOrDefaultAsync(ct);
+
+        return email ?? usuarioId.ToString();
+    }
 
     [HttpGet]
     [Authorize(Roles = "SuperAdmin")]
@@ -94,7 +110,7 @@ public class TenantsController : ControllerBase
         await _db.SaveChangesAsync(ct);
 
         _logger.LogWarning("SuperAdmin {SuperAdmin} cambió el plan del tenant {TenantId} a {Plan}",
-            EmailDelSuperAdmin(), tenant.Id, plan.Nombre);
+            await IdentificacionDelSuperAdmin(ct), tenant.Id, plan.Nombre);
 
         return Ok(new { tenant.Id, PlanId = plan.Id, PlanNombre = plan.Nombre });
     }
@@ -146,7 +162,7 @@ public class TenantsController : ControllerBase
         tenant.Estado = TenantEstado.Activo;
         await _db.SaveChangesAsync(ct);
 
-        _logger.LogWarning("SuperAdmin {SuperAdmin} activó el tenant {TenantId}", EmailDelSuperAdmin(), tenant.Id);
+        _logger.LogWarning("SuperAdmin {SuperAdmin} activó el tenant {TenantId}", await IdentificacionDelSuperAdmin(ct), tenant.Id);
 
         return Ok(new { tenant.Id, Estado = tenant.Estado.ToString() });
     }
@@ -161,7 +177,7 @@ public class TenantsController : ControllerBase
         tenant.Estado = TenantEstado.Suspendido;
         await _db.SaveChangesAsync(ct);
 
-        _logger.LogWarning("SuperAdmin {SuperAdmin} suspendió el tenant {TenantId}", EmailDelSuperAdmin(), tenant.Id);
+        _logger.LogWarning("SuperAdmin {SuperAdmin} suspendió el tenant {TenantId}", await IdentificacionDelSuperAdmin(ct), tenant.Id);
 
         return Ok(new { tenant.Id, Estado = tenant.Estado.ToString() });
     }

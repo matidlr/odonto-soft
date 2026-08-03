@@ -16,4 +16,9 @@ public class Paciente
     public string? Email { get; set; }
     public DateTime? FechaNacimiento { get; set; }
     public DateTime FechaRegistro { get; set; } = DateTime.UtcNow;
+
+    // Baja lógica: un paciente "eliminado" queda con Activo=false pero sus
+    // datos, turnos e historia clínica se conservan (nunca se borran de
+    // verdad). Se puede reactivar.
+    public bool Activo { get; set; } = true;
 }

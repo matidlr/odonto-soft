@@ -1,0 +1,70 @@
+.volver {
+  display: inline-block;
+  margin-bottom: 1rem;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.ayuda {
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin: 0 0 1.25rem;
+}
+
+.error {
+  color: #dc2626;
+  margin-bottom: 1rem;
+}
+
+.vacio {
+  color: #6b7280;
+}
+
+.tabla-auditoria {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+
+  th,
+  td {
+    text-align: left;
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid #eee;
+    font-size: 0.85rem;
+    vertical-align: top;
+  }
+
+  th {
+    background: #f1f5f9;
+    font-size: 0.75rem;
+    color: #555;
+    white-space: nowrap;
+  }
+
+  .valor {
+    max-width: 220px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #374151;
+  }
+}
+
+.etiqueta-accion {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+
+  &.creado {
+    background: #dcfce7;
+    color: #16803c;
+  }
+
+  &.editado {
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+}

@@ -89,8 +89,13 @@ public class RecordatorioBackgroundService : BackgroundService
                 ? "Recordatorio: turno mañana"
                 : "Recordatorio: turno en 2 horas";
 
+            // El nombre del paciente lo carga el propio paciente (o el
+            // consultorio) como texto libre — nunca hay que pegarlo directo
+            // en HTML sin escapar, porque terminaría siendo parte del email.
+            var nombreSeguro = System.Net.WebUtility.HtmlEncode(turno.Paciente.Nombre);
+
             var cuerpo =
-                $"<p>Hola {turno.Paciente.Nombre},</p>" +
+                $"<p>Hola {nombreSeguro},</p>" +
                 $"<p>Te recordamos tu turno el <strong>{turno.FechaHora:dddd dd/MM/yyyy}</strong> a las <strong>{turno.FechaHora:HH:mm}</strong>.</p>" +
                 "<p>Si necesitás cancelar o reprogramar, contactanos.</p>";
 

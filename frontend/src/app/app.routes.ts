@@ -73,6 +73,13 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'pacientes/:pacienteId/auditoria',
+        loadComponent: () =>
+          import('./features/auditoria/auditoria.component').then(
+            (m) => m.AuditoriaComponent
+          )
+      },
+      {
         path: 'cobros',
         loadComponent: () =>
           import('./features/cobros/cobros-pendientes.component').then(
