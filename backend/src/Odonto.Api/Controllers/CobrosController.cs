@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Odonto.Api.Validacion;
+using Odonto.Application.Common.Interfaces;
 using Odonto.Domain.Common;
 using Odonto.Domain.Entities;
 using Odonto.Infrastructure.Persistence;
@@ -20,11 +21,13 @@ public class CobrosController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ILogger<CobrosController> _logger;
+    private readonly IAuditoriaService _auditoria;
 
-    public CobrosController(AppDbContext db, ILogger<CobrosController> logger)
+    public CobrosController(AppDbContext db, ILogger<CobrosController> logger, IAuditoriaService auditoria)
     {
         _db = db;
         _logger = logger;
+        _auditoria = auditoria;
     }
 
     private Guid? UsuarioIdActual()
@@ -141,6 +144,10 @@ public class CobrosController : ControllerBase
         };
 
         _db.Cobros.Add(cobro);
+
+        _auditoria.RegistrarAccion(tenantId, pacienteId, "Cobro", cobro.Id, "Creado",
+            $"{cobro.Monto:C} vía {cobro.MedioPago}" + (cobro.Concepto is null ? "" : $" — {cobro.Concepto}"));
+
         await _db.SaveChangesAsync(ct);
 
         return Ok(AResponse(cobro));
@@ -155,6 +162,10 @@ public class CobrosController : ControllerBase
         cobro.IsDeleted = true;
         cobro.DeletedAt = DateTime.UtcNow;
         cobro.DeletedBy = UsuarioIdActual();
+
+        _auditoria.RegistrarAccion(cobro.TenantId, cobro.PacienteId, "Cobro", cobro.Id, "Eliminado",
+            $"{cobro.Monto:C} vía {cobro.MedioPago}");
+
         await _db.SaveChangesAsync(ct);
 
         _logger.LogWarning("Cobro {CobroId} eliminado (baja lógica) por usuario {UsuarioId}",

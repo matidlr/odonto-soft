@@ -7,7 +7,13 @@ import { Paciente, PacienteService } from '../../core/paciente.service';
 const ETIQUETA_ENTIDAD: Record<string, string> = {
   EventoOdontograma: 'Odontograma',
   FichaMedica: 'Ficha médica',
-  NotaEvolucion: 'Nota de evolución'
+  NotaEvolucion: 'Nota de evolución',
+  Paciente: 'Datos del paciente',
+  Turno: 'Turno',
+  Cobro: 'Cobro',
+  Presupuesto: 'Presupuesto',
+  ArchivoPaciente: 'Archivos',
+  Consentimiento: 'Consentimiento'
 };
 
 @Component({

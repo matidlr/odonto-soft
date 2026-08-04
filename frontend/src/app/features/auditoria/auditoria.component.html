@@ -2,8 +2,8 @@
 
 <h1>Auditoría{{ paciente() ? ' — ' + paciente()!.nombre : '' }}</h1>
 <p class="ayuda">
-  Cada cambio en el odontograma, la ficha médica o las notas de evolución de este paciente,
-  con quién lo hizo y cuándo.
+  Cada acción sobre este paciente (odontograma, ficha médica, notas, turnos, cobros,
+  presupuestos, archivos, consentimientos y sus datos), con quién la hizo y cuándo.
 </p>
 
 @if (error()) {
@@ -34,7 +34,12 @@
           <td>{{ r.usuarioNombre || r.usuarioEmail || 'Desconocido' }}</td>
           <td>{{ nombreEntidad(r.entidad) }}</td>
           <td>
-            <span class="etiqueta-accion" [class.creado]="r.accion === 'Creado'" [class.editado]="r.accion === 'Editado'">
+            <span
+              class="etiqueta-accion"
+              [class.creado]="r.accion === 'Creado' || r.accion === 'Reactivado'"
+              [class.editado]="r.accion === 'Editado' || r.accion === 'Convertido' || r.accion === 'Firmado'"
+              [class.eliminado]="r.accion === 'Eliminado' || r.accion === 'DadoDeBaja'"
+            >
               {{ r.accion }}
             </span>
           </td>

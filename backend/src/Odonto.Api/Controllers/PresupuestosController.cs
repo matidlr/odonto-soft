@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Odonto.Api.Validacion;
+using Odonto.Application.Common.Interfaces;
 using Odonto.Domain.Common;
 using Odonto.Domain.Entities;
 using Odonto.Infrastructure.Persistence;
@@ -20,11 +21,13 @@ public class PresupuestosController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ILogger<PresupuestosController> _logger;
+    private readonly IAuditoriaService _auditoria;
 
-    public PresupuestosController(AppDbContext db, ILogger<PresupuestosController> logger)
+    public PresupuestosController(AppDbContext db, ILogger<PresupuestosController> logger, IAuditoriaService auditoria)
     {
         _db = db;
         _logger = logger;
+        _auditoria = auditoria;
     }
 
     private Guid? UsuarioIdActual()
@@ -164,6 +167,11 @@ public class PresupuestosController : ControllerBase
         };
 
         _db.Presupuestos.Add(presupuesto);
+
+        var montoTotal = presupuesto.Items.Sum(i => i.Cantidad * i.PrecioUnitario);
+        _auditoria.RegistrarAccion(tenantId, pacienteId, "Presupuesto", presupuesto.Id, "Creado",
+            $"{presupuesto.Items.Count} ítem(s), total {montoTotal:C}");
+
         await _db.SaveChangesAsync(ct);
 
         return Ok(AResponse(presupuesto));
@@ -186,8 +194,13 @@ public class PresupuestosController : ControllerBase
         if (presupuesto.Convertido)
             return BadRequest(new { message = "Este presupuesto ya fue convertido en tratamiento, no se puede cambiar." });
 
+        var estadoAnterior = presupuesto.Estado;
         presupuesto.Estado = request.Estado;
         presupuesto.FechaRespuesta = DateTime.UtcNow;
+
+        _auditoria.RegistrarCampo(presupuesto.TenantId, presupuesto.PacienteId, "Presupuesto", presupuesto.Id,
+            "Editado", "Estado", estadoAnterior.ToString(), presupuesto.Estado.ToString());
+
         await _db.SaveChangesAsync(ct);
 
         return Ok(AResponse(presupuesto));
@@ -235,6 +248,10 @@ public class PresupuestosController : ControllerBase
 
         presupuesto.Convertido = true;
         presupuesto.FechaConversion = ahora;
+
+        _auditoria.RegistrarAccion(presupuesto.TenantId, presupuesto.PacienteId, "Presupuesto", presupuesto.Id,
+            "Convertido", $"{eventosCreados} evento(s) generados en el odontograma");
+
         await _db.SaveChangesAsync(ct);
 
         return Ok(new { presupuesto.Id, EventosCreados = eventosCreados });
@@ -252,6 +269,9 @@ public class PresupuestosController : ControllerBase
         presupuesto.IsDeleted = true;
         presupuesto.DeletedAt = DateTime.UtcNow;
         presupuesto.DeletedBy = UsuarioIdActual();
+
+        _auditoria.RegistrarAccion(presupuesto.TenantId, presupuesto.PacienteId, "Presupuesto", presupuesto.Id, "Eliminado");
+
         await _db.SaveChangesAsync(ct);
 
         _logger.LogWarning("Presupuesto {PresupuestoId} eliminado (baja lógica) por usuario {UsuarioId}",

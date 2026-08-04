@@ -37,13 +37,15 @@ public class ArchivosPacienteController : ControllerBase
     private readonly IWebHostEnvironment _env;
     private readonly ILogger<ArchivosPacienteController> _logger;
     private readonly IArchivoCifrado _cifrado;
+    private readonly IAuditoriaService _auditoria;
 
-    public ArchivosPacienteController(AppDbContext db, IWebHostEnvironment env, ILogger<ArchivosPacienteController> logger, IArchivoCifrado cifrado)
+    public ArchivosPacienteController(AppDbContext db, IWebHostEnvironment env, ILogger<ArchivosPacienteController> logger, IArchivoCifrado cifrado, IAuditoriaService auditoria)
     {
         _db = db;
         _env = env;
         _logger = logger;
         _cifrado = cifrado;
+        _auditoria = auditoria;
     }
 
     private Guid? UsuarioIdActual()
@@ -144,6 +146,10 @@ public class ArchivosPacienteController : ControllerBase
         };
 
         _db.ArchivosPaciente.Add(registro);
+
+        _auditoria.RegistrarAccion(tenantId, pacienteId, "ArchivoPaciente", registro.Id, "Creado",
+            $"{registro.NombreOriginal} ({registro.Categoria})");
+
         await _db.SaveChangesAsync(ct);
 
         return Ok(new ArchivoPacienteResponse(
@@ -177,6 +183,10 @@ public class ArchivosPacienteController : ControllerBase
         archivo.IsDeleted = true;
         archivo.DeletedAt = DateTime.UtcNow;
         archivo.DeletedBy = UsuarioIdActual();
+
+        _auditoria.RegistrarAccion(archivo.TenantId, archivo.PacienteId, "ArchivoPaciente", archivo.Id, "Eliminado",
+            archivo.NombreOriginal);
+
         await _db.SaveChangesAsync(ct);
 
         _logger.LogWarning("Archivo {ArchivoId} del paciente {PacienteId} eliminado (baja lógica) por usuario {UsuarioId}",

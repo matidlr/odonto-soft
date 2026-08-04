@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Odonto.Api.Validacion;
 using Odonto.Application.Agenda;
+using Odonto.Application.Common.Interfaces;
 using Odonto.Domain.Common;
 using Odonto.Domain.Entities;
 using Odonto.Infrastructure.Persistence;
@@ -19,10 +20,12 @@ namespace Odonto.Api.Controllers;
 public class TurnosController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IAuditoriaService _auditoria;
 
-    public TurnosController(AppDbContext db)
+    public TurnosController(AppDbContext db, IAuditoriaService auditoria)
     {
         _db = db;
+        _auditoria = auditoria;
     }
 
     /// <summary>Sede a usar cuando no se especifica una: la Principal del odontólogo.</summary>
@@ -253,6 +256,9 @@ public class TurnosController : ControllerBase
         var notificaciones = RecordatorioScheduler.Generar(turno);
         _db.Notificaciones.AddRange(notificaciones);
 
+        _auditoria.RegistrarAccion(tenantId, turno.PacienteId, "Turno", turno.Id, "Creado",
+            $"{turno.FechaHora:dd/MM/yyyy HH:mm}");
+
         await _db.SaveChangesAsync(ct);
 
         return Ok(new
@@ -276,7 +282,12 @@ public class TurnosController : ControllerBase
         var turno = await _db.Turnos.FindAsync(new object[] { id }, ct);
         if (turno is null) return NotFound();
 
+        var estadoAnterior = turno.Estado;
         turno.Estado = request.Estado;
+
+        _auditoria.RegistrarCampo(turno.TenantId, turno.PacienteId, "Turno", turno.Id,
+            "Editado", "Estado", estadoAnterior.ToString(), turno.Estado.ToString());
+
         await _db.SaveChangesAsync(ct);
 
         return Ok(new { turno.Id, Estado = turno.Estado.ToString() });

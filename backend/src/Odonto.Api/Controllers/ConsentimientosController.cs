@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Odonto.Api.Validacion;
+using Odonto.Application.Common.Interfaces;
 using Odonto.Domain.Common;
 using Odonto.Domain.Entities;
 using Odonto.Infrastructure.Persistence;
@@ -21,11 +22,13 @@ public class ConsentimientosController : ControllerBase
 
     private readonly AppDbContext _db;
     private readonly ILogger<ConsentimientosController> _logger;
+    private readonly IAuditoriaService _auditoria;
 
-    public ConsentimientosController(AppDbContext db, ILogger<ConsentimientosController> logger)
+    public ConsentimientosController(AppDbContext db, ILogger<ConsentimientosController> logger, IAuditoriaService auditoria)
     {
         _db = db;
         _logger = logger;
+        _auditoria = auditoria;
     }
 
     private Guid? UsuarioIdActual()
@@ -124,6 +127,10 @@ public class ConsentimientosController : ControllerBase
         };
 
         _db.Consentimientos.Add(consentimiento);
+
+        _auditoria.RegistrarAccion(tenantId, pacienteId, "Consentimiento", consentimiento.Id, "Creado",
+            $"{consentimiento.Titulo} ({consentimiento.Tipo})" + (tieneFirma ? " — firmado" : ""));
+
         await _db.SaveChangesAsync(ct);
 
         return Ok(AResponse(consentimiento));
@@ -149,6 +156,9 @@ public class ConsentimientosController : ControllerBase
         consentimiento.FirmaNombreAclaratorio = request.FirmaNombreAclaratorio;
         consentimiento.FechaFirma = DateTime.UtcNow;
 
+        _auditoria.RegistrarAccion(consentimiento.TenantId, consentimiento.PacienteId, "Consentimiento", consentimiento.Id,
+            "Firmado", consentimiento.FirmaNombreAclaratorio);
+
         await _db.SaveChangesAsync(ct);
 
         return Ok(AResponse(consentimiento));
@@ -166,6 +176,9 @@ public class ConsentimientosController : ControllerBase
         consentimiento.IsDeleted = true;
         consentimiento.DeletedAt = DateTime.UtcNow;
         consentimiento.DeletedBy = UsuarioIdActual();
+
+        _auditoria.RegistrarAccion(consentimiento.TenantId, consentimiento.PacienteId, "Consentimiento", consentimiento.Id, "Eliminado");
+
         await _db.SaveChangesAsync(ct);
 
         _logger.LogWarning("Consentimiento {ConsentimientoId} eliminado (baja lógica) por usuario {UsuarioId}",

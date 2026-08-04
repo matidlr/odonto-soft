@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Odonto.Api.Validacion;
+using Odonto.Application.Common.Interfaces;
 using Odonto.Domain.Entities;
 using Odonto.Infrastructure.Persistence;
 
@@ -20,11 +21,13 @@ public class PacientesController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ILogger<PacientesController> _logger;
+    private readonly IAuditoriaService _auditoria;
 
-    public PacientesController(AppDbContext db, ILogger<PacientesController> logger)
+    public PacientesController(AppDbContext db, ILogger<PacientesController> logger, IAuditoriaService auditoria)
     {
         _db = db;
         _logger = logger;
+        _auditoria = auditoria;
     }
 
     private Guid? UsuarioIdActual()
@@ -120,6 +123,9 @@ public class PacientesController : ControllerBase
         };
 
         _db.Pacientes.Add(paciente);
+
+        _auditoria.RegistrarAccion(tenantId, paciente.Id, "Paciente", paciente.Id, "Creado", paciente.Nombre);
+
         await _db.SaveChangesAsync(ct);
 
         return Ok(new { paciente.Id });
@@ -148,6 +154,15 @@ public class PacientesController : ControllerBase
         var paciente = await _db.Pacientes.FirstOrDefaultAsync(p => p.Id == id, ct);
         if (paciente is null) return NotFound();
 
+        _auditoria.RegistrarCampo(paciente.TenantId, paciente.Id, "Paciente", paciente.Id, "Editado", "Nombre", paciente.Nombre, request.Nombre);
+        _auditoria.RegistrarCampo(paciente.TenantId, paciente.Id, "Paciente", paciente.Id, "Editado", "Dni", paciente.Dni, request.Dni);
+        _auditoria.RegistrarCampo(paciente.TenantId, paciente.Id, "Paciente", paciente.Id, "Editado", "Telefono", paciente.Telefono, request.Telefono);
+        _auditoria.RegistrarCampo(paciente.TenantId, paciente.Id, "Paciente", paciente.Id, "Editado", "Email", paciente.Email, request.Email);
+        _auditoria.RegistrarCampo(paciente.TenantId, paciente.Id, "Paciente", paciente.Id, "Editado", "FechaNacimiento",
+            paciente.FechaNacimiento?.ToString("yyyy-MM-dd"), request.FechaNacimiento?.ToString("yyyy-MM-dd"));
+        _auditoria.RegistrarCampo(paciente.TenantId, paciente.Id, "Paciente", paciente.Id, "Editado", "OdontologoPrincipalId",
+            paciente.OdontologoPrincipalId?.ToString(), request.OdontologoPrincipalId?.ToString());
+
         paciente.Nombre = request.Nombre;
         paciente.Dni = request.Dni;
         paciente.Telefono = request.Telefono;
@@ -172,6 +187,9 @@ public class PacientesController : ControllerBase
         if (paciente is null) return NotFound();
 
         paciente.Activo = false;
+
+        _auditoria.RegistrarAccion(paciente.TenantId, paciente.Id, "Paciente", paciente.Id, "DadoDeBaja");
+
         await _db.SaveChangesAsync(ct);
 
         _logger.LogWarning("Paciente {PacienteId} dado de baja por usuario {UsuarioId}",
@@ -187,6 +205,9 @@ public class PacientesController : ControllerBase
         if (paciente is null) return NotFound();
 
         paciente.Activo = true;
+
+        _auditoria.RegistrarAccion(paciente.TenantId, paciente.Id, "Paciente", paciente.Id, "Reactivado");
+
         await _db.SaveChangesAsync(ct);
 
         _logger.LogWarning("Paciente {PacienteId} reactivado por usuario {UsuarioId}",
