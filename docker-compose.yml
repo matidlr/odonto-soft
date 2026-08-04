@@ -1,3 +1,9 @@
+# NOTA: este archivo no se usa en el flujo de desarrollo real de este
+# proyecto (que corre MySQL instalado directo en Windows, ver backend/README.md).
+# Se deja andando por si algún día hace falta levantar todo con Docker (ej.
+# un servidor). Los valores por defecto de acá abajo son solo para uso local
+# descartable; para cualquier otra cosa, pisalos con variables de entorno
+# (nunca los edites hardcodeados en este archivo ni los subas reales a git).
 services:
   api:
     build:
@@ -6,7 +12,7 @@ services:
     ports:
       - "5000:8080"
     environment:
-      - ConnectionStrings__Default=Server=db;Port=3306;Database=odonto;User=odonto;Password=odonto_dev_password
+      - ConnectionStrings__Default=Server=db;Port=3306;Database=odonto;User=odonto;Password=${MYSQL_PASSWORD:-odonto_dev_password}
       - Jwt__Key=${JWT_KEY:-CHANGE_ME_super_secret_key_min_32_chars_prod}
       - ASPNETCORE_ENVIRONMENT=Development
     depends_on:
@@ -17,8 +23,8 @@ services:
     environment:
       - MYSQL_DATABASE=odonto
       - MYSQL_USER=odonto
-      - MYSQL_PASSWORD=odonto_dev_password
-      - MYSQL_ROOT_PASSWORD=odonto_root_password
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-odonto_dev_password}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-odonto_root_password}
     ports:
       - "3306:3306"
     volumes:

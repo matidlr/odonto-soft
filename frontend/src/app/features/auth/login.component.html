@@ -23,6 +23,10 @@
       autocomplete="current-password"
     />
 
+    @if (mensajeInactividad()) {
+      <p class="aviso">Se cerró tu sesión por inactividad. Volvé a iniciar sesión.</p>
+    }
+
     @if (error()) {
       <p class="error">{{ error() }}</p>
     }

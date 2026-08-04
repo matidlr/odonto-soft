@@ -39,6 +39,68 @@ dotnet run --project src/Odonto.Api
 
 La API queda en `https://localhost:5001` (o el puerto que indique la consola) con Swagger en `/swagger`, y un endpoint de salud sin autenticación en `/health`.
 
+## Secretos (nunca van al repo)
+
+`appsettings.json` y `appsettings.Development.json` quedan en el repo (público
+o no, da igual: nunca hay que confiar en eso) con los secretos reales vacíos
+o en placeholder. Los valores de verdad —contraseña de MySQL, `Jwt:Key`,
+`Bootstrap:Key`, `Brevo:ApiKey`, `MercadoPago:AccessToken`— se cargan en la
+máquina de cada uno con `dotnet user-secrets`, que los guarda fuera de la
+carpeta del repo (en Windows: `%APPDATA%\Microsoft\UserSecrets\<id>\secrets.json`)
+así es imposible subirlos por accidente con un `git add`.
+
+La app se conecta con un usuario de MySQL propio (`odonto_app`), nunca con
+`root`: tiene permisos solo sobre la base `odonto`, no sobre el resto del
+servidor (ver sección "Usuario de MySQL de la aplicación" más abajo).
+
+```bash
+# Desde src/Odonto.Api/ (una sola vez, ya está inicializado en el .csproj)
+dotnet user-secrets set "ConnectionStrings:Default" "Server=localhost;Port=3306;Database=odonto;User=odonto_app;Password=TU_PASSWORD_REAL"
+dotnet user-secrets set "Jwt:Key" "una-clave-larga-y-random-de-al-menos-32-caracteres"
+dotnet user-secrets set "Bootstrap:Key" "otra-clave-random-para-crear-el-primer-superadmin"
+dotnet user-secrets set "Brevo:ApiKey" "tu-api-key-de-brevo"
+dotnet user-secrets set "Brevo:SenderEmail" "no-responder@tudominio.com"
+dotnet user-secrets set "MercadoPago:AccessToken" "tu-access-token-de-mercado-pago"
+
+# Archivos:ClaveCifrado: 32 bytes en base64 (AES-256) para cifrar radiografías/
+# PDFs en disco. Generarla UNA sola vez y no perderla (si se pierde o se
+# cambia, los archivos ya cifrados con la vieja quedan ilegibles):
+#   PowerShell: [Convert]::ToBase64String([byte[]](1..32 | ForEach-Object { Get-Random -Maximum 256 }))
+dotnet user-secrets set "Archivos:ClaveCifrado" "la-clave-de-32-bytes-en-base64-que-generaste"
+
+# Ver qué hay cargado (no muestra nada si todavía no configuraste nada)
+dotnet user-secrets list
+```
+
+En producción (un servidor de verdad, no la compu local) no se usa
+`user-secrets` — ahí van como variables de entorno del sistema/proceso, con
+el mismo nombre pero `:` reemplazado por `__` (doble guion bajo), por ejemplo
+`Jwt__Key`, `ConnectionStrings__Default`. `Program.cs` ya corta el arranque
+si `Jwt:Key` quedó con el valor de ejemplo del repo fuera de Development, así
+que no hay riesgo de desplegar sin haber puesto la clave real.
+
+## Usuario de MySQL de la aplicación
+
+La API nunca se conecta como `root`: usa un usuario dedicado (`odonto_app`)
+que solo tiene permisos sobre la base `odonto`, no sobre el resto del
+servidor (no puede ver ni tocar otras bases, ni crear usuarios, ni apagar
+el servidor). Se crea una sola vez, conectado como root:
+
+```sql
+CREATE USER 'odonto_app'@'localhost' IDENTIFIED BY 'PASSWORD_FUERTE_DEL_APP';
+GRANT ALL PRIVILEGES ON odonto.* TO 'odonto_app'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+`ALL PRIVILEGES ON odonto.*` alcanza para que la app lea/escriba datos y
+para que EF Core cree/altere tablas al aplicar migraciones (en Development,
+automático al hacer `dotnet run`) — pero está limitado a esa única base.
+Los scripts de backup (`backup-db.ps1`/`restaurar-prueba.ps1`) siguen usando
+`root` vía `mysql-backup.cnf` a propósito: son scripts administrativos que
+corre una persona a mano, no la aplicación, y `restaurar-prueba.ps1`
+necesita poder crear una base nueva (`CREATE DATABASE`), algo que
+`odonto_app` no puede hacer ni debería.
+
 ## Cómo correrlo con Docker
 
 Desde la raíz del repo (donde está `docker-compose.yml`):

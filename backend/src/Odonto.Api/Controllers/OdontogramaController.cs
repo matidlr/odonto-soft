@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Odonto.Api.Validacion;
+using Odonto.Application.Common.Interfaces;
 using Odonto.Domain.Common;
 using Odonto.Domain.Entities;
 using Odonto.Infrastructure.Persistence;
@@ -52,11 +53,13 @@ public class OdontogramaController : ControllerBase
 
     private readonly AppDbContext _db;
     private readonly IWebHostEnvironment _env;
+    private readonly IArchivoCifrado _cifrado;
 
-    public OdontogramaController(AppDbContext db, IWebHostEnvironment env)
+    public OdontogramaController(AppDbContext db, IWebHostEnvironment env, IArchivoCifrado cifrado)
     {
         _db = db;
         _env = env;
+        _cifrado = cifrado;
     }
 
     public record EstadoPiezaResponse(
@@ -295,9 +298,11 @@ public class OdontogramaController : ControllerBase
         var nombreEnDisco = $"{Guid.NewGuid()}{extension}";
         var rutaCompleta = Path.Combine(carpeta, nombreEnDisco);
 
-        await using (var stream = System.IO.File.Create(rutaCompleta))
+        // Cifrado (AES-256-GCM) antes de tocar el disco — ver ArchivoCifradoService.
+        using (var streamMemoria = new MemoryStream())
         {
-            await archivo.CopyToAsync(stream, ct);
+            await archivo.CopyToAsync(streamMemoria, ct);
+            await _cifrado.CifrarAArchivoAsync(streamMemoria.ToArray(), rutaCompleta, ct);
         }
 
         var registro = new ArchivoOdontograma
@@ -326,7 +331,7 @@ public class OdontogramaController : ControllerBase
         if (!System.IO.File.Exists(archivo.RutaEnDisco))
             return NotFound(new { message = "El archivo ya no está disponible en el servidor." });
 
-        var stream = System.IO.File.OpenRead(archivo.RutaEnDisco);
-        return File(stream, archivo.ContentType, archivo.NombreOriginal);
+        var contenido = await _cifrado.DescifrarDeArchivoAsync(archivo.RutaEnDisco, ct);
+        return File(contenido, archivo.ContentType, archivo.NombreOriginal);
     }
 }

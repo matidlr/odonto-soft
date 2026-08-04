@@ -1,6 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 
 @Component({
@@ -16,10 +16,17 @@ export class LoginComponent {
   cargando = signal(false);
   error = signal<string | null>(null);
 
+  // Si llegamos acá porque InactividadService cerró la sesión sola, se
+  // avisa (no es un error, así que va aparte del cartel de error rojo).
+  mensajeInactividad = signal(false);
+
   constructor(
     private auth: AuthService,
-    private router: Router
-  ) {}
+    private router: Router,
+    route: ActivatedRoute
+  ) {
+    this.mensajeInactividad.set(route.snapshot.queryParamMap.get('motivo') === 'inactividad');
+  }
 
   async onSubmit(): Promise<void> {
     this.error.set(null);

@@ -1,1 +1,10 @@
 <router-outlet />
+
+@if (inactividad.mostrarAviso()) {
+  <div class="aviso-inactividad-fondo">
+    <div class="aviso-inactividad-cartel">
+      <p>Tu sesión se va a cerrar por inactividad en {{ inactividad.segundosParaCierre() }} segundos.</p>
+      <button type="button" (click)="inactividad.seguirConectado()">Seguir conectado</button>
+    </div>
+  </div>
+}

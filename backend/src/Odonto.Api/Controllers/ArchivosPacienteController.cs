@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Odonto.Api.Validacion;
+using Odonto.Application.Common.Interfaces;
 using Odonto.Domain.Common;
 using Odonto.Domain.Entities;
 using Odonto.Infrastructure.Persistence;
@@ -35,12 +36,14 @@ public class ArchivosPacienteController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IWebHostEnvironment _env;
     private readonly ILogger<ArchivosPacienteController> _logger;
+    private readonly IArchivoCifrado _cifrado;
 
-    public ArchivosPacienteController(AppDbContext db, IWebHostEnvironment env, ILogger<ArchivosPacienteController> logger)
+    public ArchivosPacienteController(AppDbContext db, IWebHostEnvironment env, ILogger<ArchivosPacienteController> logger, IArchivoCifrado cifrado)
     {
         _db = db;
         _env = env;
         _logger = logger;
+        _cifrado = cifrado;
     }
 
     private Guid? UsuarioIdActual()
@@ -114,15 +117,18 @@ public class ArchivosPacienteController : ControllerBase
         // uploads/{tenantId}/{pacienteId}/archivos-paciente/{guid}{extension}
         // NOTA: igual que en el odontograma, esto guarda en disco local — el
         // día que se dockerice/despliegue tiene que migrar a storage externo.
+        // El contenido se cifra (AES-256-GCM) antes de tocar el disco: ver
+        // ArchivoCifradoService, checklist de seguridad ítem "Cifrado".
         var carpeta = Path.Combine(_env.ContentRootPath, "uploads", tenantId.ToString(), pacienteId.ToString(), "archivos-paciente");
         Directory.CreateDirectory(carpeta);
 
         var nombreEnDisco = $"{Guid.NewGuid()}{extension}";
         var rutaCompleta = Path.Combine(carpeta, nombreEnDisco);
 
-        await using (var stream = System.IO.File.Create(rutaCompleta))
+        using (var streamMemoria = new MemoryStream())
         {
-            await archivo.CopyToAsync(stream, ct);
+            await archivo.CopyToAsync(streamMemoria, ct);
+            await _cifrado.CifrarAArchivoAsync(streamMemoria.ToArray(), rutaCompleta, ct);
         }
 
         var registro = new ArchivoPaciente
@@ -155,8 +161,8 @@ public class ArchivosPacienteController : ControllerBase
         if (!System.IO.File.Exists(archivo.RutaEnDisco))
             return NotFound(new { message = "El archivo ya no está disponible en el servidor." });
 
-        var stream = System.IO.File.OpenRead(archivo.RutaEnDisco);
-        return File(stream, archivo.ContentType, archivo.NombreOriginal);
+        var contenido = await _cifrado.DescifrarDeArchivoAsync(archivo.RutaEnDisco, ct);
+        return File(contenido, archivo.ContentType, archivo.NombreOriginal);
     }
 
     [HttpDelete("{archivoId}")]

@@ -78,7 +78,7 @@ export class AuthService {
     );
   }
 
-  logout(): void {
+  logout(motivo?: 'inactividad'): void {
     // Mejor esfuerzo: avisamos al backend para que revoque el refresh token
     // de esta sesión y borre la cookie. Si falla (sin conexión, etc.) igual
     // cerramos la sesión local, que es lo que importa para el usuario.
@@ -86,7 +86,7 @@ export class AuthService {
 
     localStorage.removeItem(STORAGE_KEY);
     this.sesionSignal.set(null);
-    this.router.navigateByUrl('/login');
+    this.router.navigate(['/login'], { queryParams: motivo ? { motivo } : {} });
   }
 
   /// Cierra la sesión en todos los dispositivos (revoca todos los refresh

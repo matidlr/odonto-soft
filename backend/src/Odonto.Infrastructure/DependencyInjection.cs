@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Odonto.Application.Common.Interfaces;
+using Odonto.Infrastructure.Archivos;
 using Odonto.Infrastructure.Notificaciones;
 using Odonto.Infrastructure.Payments;
 using Odonto.Infrastructure.Persistence;
@@ -23,6 +24,8 @@ public static class DependencyInjection
         services.AddHostedService<RecordatorioBackgroundService>();
 
         services.AddHttpClient<MercadoPagoService>();
+
+        services.AddSingleton<IArchivoCifrado, ArchivoCifradoService>();
 
         return services;
     }

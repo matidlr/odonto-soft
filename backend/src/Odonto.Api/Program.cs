@@ -82,6 +82,26 @@ if (jwtKey.Length < 32)
     throw new InvalidOperationException("Jwt:Key debe tener al menos 32 caracteres para ser segura.");
 }
 
+// Misma lógica que Jwt:Key: la clave de cifrado de archivos (radiografías,
+// PDFs) nunca puede quedar en appsettings.json, y validamos acá al arrancar
+// en vez de dejar que el primer upload/descarga explote con un error confuso.
+var claveCifradoArchivos = builder.Configuration["Archivos:ClaveCifrado"]
+    ?? throw new InvalidOperationException(
+        "Falta configurar Archivos:ClaveCifrado (dotnet user-secrets). Ver README para generarla.");
+try
+{
+    var claveCifradoBytes = Convert.FromBase64String(claveCifradoArchivos);
+    if (claveCifradoBytes.Length != 32)
+    {
+        throw new InvalidOperationException(
+            $"Archivos:ClaveCifrado tiene que decodificar a 32 bytes (AES-256); tiene {claveCifradoBytes.Length}.");
+    }
+}
+catch (FormatException)
+{
+    throw new InvalidOperationException("Archivos:ClaveCifrado tiene que ser texto en base64 válido.");
+}
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
