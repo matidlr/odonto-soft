@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Odonto.Api.Validacion;
 using Odonto.Application.Common.Interfaces;
+using Odonto.Application.Presupuestos;
 using Odonto.Domain.Common;
 using Odonto.Domain.Entities;
 using Odonto.Infrastructure.Persistence;
@@ -224,37 +225,19 @@ public class PresupuestosController : ControllerBase
             return BadRequest(new { message = "Este presupuesto ya fue convertido." });
 
         var ahora = DateTime.UtcNow;
-        var eventosCreados = 0;
 
-        foreach (var item in presupuesto.Items)
-        {
-            if (item.NumeroFdi is int numeroFdi && item.EstadoDienteResultante is EstadoDiente estado)
-            {
-                _db.EventosOdontograma.Add(new EventoOdontograma
-                {
-                    TenantId = presupuesto.TenantId,
-                    PacienteId = presupuesto.PacienteId,
-                    NumeroFdi = numeroFdi,
-                    Estado = estado,
-                    EstadoTratamiento = EstadoTratamiento.Planificado,
-                    Tratamiento = item.Descripcion,
-                    Nota = "Generado desde presupuesto aprobado.",
-                    OdontologoId = presupuesto.OdontologoId,
-                    Fecha = ahora
-                });
-                eventosCreados++;
-            }
-        }
+        var eventos = ConversionPresupuesto.GenerarEventos(presupuesto, ahora);
+        _db.EventosOdontograma.AddRange(eventos);
 
         presupuesto.Convertido = true;
         presupuesto.FechaConversion = ahora;
 
         _auditoria.RegistrarAccion(presupuesto.TenantId, presupuesto.PacienteId, "Presupuesto", presupuesto.Id,
-            "Convertido", $"{eventosCreados} evento(s) generados en el odontograma");
+            "Convertido", $"{eventos.Count} evento(s) generados en el odontograma");
 
         await _db.SaveChangesAsync(ct);
 
-        return Ok(new { presupuesto.Id, EventosCreados = eventosCreados });
+        return Ok(new { presupuesto.Id, EventosCreados = eventos.Count });
     }
 
     [HttpDelete("api/presupuestos/{id}")]

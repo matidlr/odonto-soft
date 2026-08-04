@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Odonto.Application.Common.Interfaces;
 using Odonto.Infrastructure.Archivos;
 using Odonto.Infrastructure.Auditoria;
+using Odonto.Infrastructure.Cobros;
 using Odonto.Infrastructure.Notificaciones;
 using Odonto.Infrastructure.Payments;
 using Odonto.Infrastructure.Persistence;
@@ -32,6 +33,7 @@ public static class DependencyInjection
         services.AddHttpClient<IVerificadorPasswordFiltrada, HibpVerificadorPasswordFiltrada>();
 
         services.AddScoped<IAuditoriaService, AuditoriaService>();
+        services.AddScoped<ICobroService, CobroService>();
 
         return services;
     }

@@ -22,12 +22,14 @@ public class CobrosController : ControllerBase
     private readonly AppDbContext _db;
     private readonly ILogger<CobrosController> _logger;
     private readonly IAuditoriaService _auditoria;
+    private readonly ICobroService _cobroService;
 
-    public CobrosController(AppDbContext db, ILogger<CobrosController> logger, IAuditoriaService auditoria)
+    public CobrosController(AppDbContext db, ILogger<CobrosController> logger, IAuditoriaService auditoria, ICobroService cobroService)
     {
         _db = db;
         _logger = logger;
         _auditoria = auditoria;
+        _cobroService = cobroService;
     }
 
     private Guid? UsuarioIdActual()
@@ -49,29 +51,13 @@ public class CobrosController : ControllerBase
     private static CobroResponse AResponse(Cobro c) => new(
         c.Id, c.PacienteId, c.PresupuestoId, c.OdontologoId, c.Monto, c.MedioPago, c.Concepto, c.Fecha);
 
-    public record SaldoResponse(decimal TotalAprobado, decimal TotalCobrado, decimal Saldo);
-
-    private async Task<SaldoResponse> CalcularSaldo(Guid pacienteId, CancellationToken ct)
-    {
-        var totalAprobado = await _db.Presupuestos
-            .Where(p => p.PacienteId == pacienteId && p.Estado == EstadoPresupuesto.Aprobado)
-            .SelectMany(p => p.Items)
-            .SumAsync(i => (decimal?)(i.Cantidad * i.PrecioUnitario), ct) ?? 0m;
-
-        var totalCobrado = await _db.Cobros
-            .Where(c => c.PacienteId == pacienteId)
-            .SumAsync(c => (decimal?)c.Monto, ct) ?? 0m;
-
-        return new SaldoResponse(totalAprobado, totalCobrado, totalAprobado - totalCobrado);
-    }
-
     [HttpGet("api/pacientes/{pacienteId}/saldo")]
     public async Task<IActionResult> GetSaldo(Guid pacienteId, CancellationToken ct)
     {
         var paciente = await _db.Pacientes.FirstOrDefaultAsync(p => p.Id == pacienteId, ct);
         if (paciente is null) return NotFound(new { message = "Paciente no encontrado." });
 
-        return Ok(await CalcularSaldo(pacienteId, ct));
+        return Ok(await _cobroService.CalcularSaldoAsync(pacienteId, ct));
     }
 
     [HttpGet("api/pacientes/{pacienteId}/cobros")]
