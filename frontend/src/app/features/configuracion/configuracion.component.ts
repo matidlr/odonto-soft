@@ -1,13 +1,14 @@
 import { Component, OnInit, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { AuthService } from '../../core/auth.service';
+import { AuthService, Sesion } from '../../core/auth.service';
 import { Configuracion, ConfiguracionService } from '../../core/configuracion.service';
 
 @Component({
   selector: 'app-configuracion',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, DatePipe],
   templateUrl: './configuracion.component.html',
   styleUrl: './configuracion.component.scss'
 })
@@ -31,13 +32,75 @@ export class ConfiguracionComponent implements OnInit {
   mensajeCerrarTodos = signal<string | null>(null);
   errorCerrarTodos = signal<string | null>(null);
 
+  sesiones = signal<Sesion[]>([]);
+  cargandoSesiones = signal(true);
+  cerrandoSesionId = signal<string | null>(null);
+  errorSesiones = signal<string | null>(null);
+
   constructor(
     private configuracionService: ConfiguracionService,
     private authService: AuthService
   ) {}
 
   async ngOnInit(): Promise<void> {
-    await this.cargar();
+    await Promise.all([this.cargar(), this.cargarSesiones()]);
+  }
+
+  async cargarSesiones(): Promise<void> {
+    this.cargandoSesiones.set(true);
+    try {
+      this.sesiones.set(await this.authService.getSesiones());
+    } catch {
+      this.errorSesiones.set('No se pudieron cargar las sesiones activas.');
+    } finally {
+      this.cargandoSesiones.set(false);
+    }
+  }
+
+  descripcionDispositivo(userAgent: string | null): string {
+    if (!userAgent) return 'Dispositivo desconocido';
+    // No hace falta un parser completo de User-Agent para esto — alcanza
+    // con reconocer el navegador y el sistema operativo más comunes.
+    const navegador = /Edg\//.test(userAgent)
+      ? 'Edge'
+      : /Chrome\//.test(userAgent)
+        ? 'Chrome'
+        : /Firefox\//.test(userAgent)
+          ? 'Firefox'
+          : /Safari\//.test(userAgent)
+            ? 'Safari'
+            : 'Navegador desconocido';
+    const so = /Windows/.test(userAgent)
+      ? 'Windows'
+      : /Mac OS/.test(userAgent)
+        ? 'macOS'
+        : /Android/.test(userAgent)
+          ? 'Android'
+          : /iPhone|iPad/.test(userAgent)
+            ? 'iOS'
+            : /Linux/.test(userAgent)
+              ? 'Linux'
+              : '';
+    return so ? `${navegador} en ${so}` : navegador;
+  }
+
+  async cerrarSesion(sesion: Sesion): Promise<void> {
+    const texto = sesion.esActual
+      ? '¿Cerrar esta sesión? Es la que estás usando ahora, así que vas a tener que volver a iniciar sesión.'
+      : '¿Cerrar esta sesión?';
+    if (!confirm(texto)) return;
+
+    this.cerrandoSesionId.set(sesion.id);
+    try {
+      await this.authService.cerrarSesion(sesion.id, sesion.esActual);
+      if (!sesion.esActual) {
+        this.sesiones.set(this.sesiones().filter((s) => s.id !== sesion.id));
+      }
+    } catch {
+      this.errorSesiones.set('No se pudo cerrar esa sesión.');
+    } finally {
+      this.cerrandoSesionId.set(null);
+    }
   }
 
   async cargar(): Promise<void> {

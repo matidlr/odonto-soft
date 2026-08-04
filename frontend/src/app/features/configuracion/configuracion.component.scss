@@ -93,6 +93,63 @@ button[type='submit'] {
   }
 }
 
+.subtitulo-panel {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.9rem;
+  color: #333;
+
+  &:first-of-type {
+    margin-top: 0;
+  }
+}
+
+.tabla-sesiones {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+
+  th,
+  td {
+    text-align: left;
+    padding: 0.4rem 0.5rem;
+    border-bottom: 1px solid #eee;
+  }
+
+  th {
+    color: #6b7280;
+    font-weight: 500;
+  }
+
+  .fila-actual {
+    background: #f0f7ff;
+  }
+}
+
+.etiqueta-actual {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: #2563eb;
+  color: white;
+  font-size: 0.7rem;
+}
+
+.btn-cerrar-sesion {
+  padding: 0.3rem 0.7rem;
+  border: 1px solid #b91c1c;
+  border-radius: 6px;
+  background: white;
+  color: #b91c1c;
+  cursor: pointer;
+  font-size: 0.8rem;
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
 .lista-enlaces {
   list-style: none;
   margin: 0;

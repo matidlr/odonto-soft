@@ -53,6 +53,53 @@
 
     <div class="panel">
       <h2>Seguridad</h2>
+
+      <h3 class="subtitulo-panel">Sesiones activas</h3>
+      @if (cargandoSesiones()) {
+        <p>Cargando sesiones...</p>
+      } @else if (sesiones().length === 0) {
+        <p class="ayuda">No hay sesiones activas.</p>
+      } @else {
+        <table class="tabla-sesiones">
+          <thead>
+            <tr>
+              <th>Dispositivo</th>
+              <th>IP</th>
+              <th>Iniciada</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (sesion of sesiones(); track sesion.id) {
+              <tr [class.fila-actual]="sesion.esActual">
+                <td>
+                  {{ descripcionDispositivo(sesion.userAgent) }}
+                  @if (sesion.esActual) {
+                    <span class="etiqueta-actual">Esta sesión</span>
+                  }
+                </td>
+                <td>{{ sesion.ipAddress ?? '—' }}</td>
+                <td>{{ sesion.fechaCreacion | date: 'dd/MM/yyyy HH:mm' }}</td>
+                <td>
+                  <button
+                    type="button"
+                    class="btn-cerrar-sesion"
+                    [disabled]="cerrandoSesionId() === sesion.id"
+                    (click)="cerrarSesion(sesion)"
+                  >
+                    {{ cerrandoSesionId() === sesion.id ? 'Cerrando...' : 'Cerrar' }}
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+      @if (errorSesiones()) {
+        <p class="error">{{ errorSesiones() }}</p>
+      }
+
+      <h3 class="subtitulo-panel">Cerrar todo</h3>
       <p class="ayuda">
         Si sospechás que alguien más entró a tu cuenta, podés cerrar todas las sesiones activas
         (en cualquier computadora o celular) de una vez. Vas a tener que volver a iniciar sesión acá.

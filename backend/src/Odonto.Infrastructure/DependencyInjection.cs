@@ -6,6 +6,7 @@ using Odonto.Infrastructure.Archivos;
 using Odonto.Infrastructure.Notificaciones;
 using Odonto.Infrastructure.Payments;
 using Odonto.Infrastructure.Persistence;
+using Odonto.Infrastructure.Seguridad;
 
 namespace Odonto.Infrastructure;
 
@@ -26,6 +27,8 @@ public static class DependencyInjection
         services.AddHttpClient<MercadoPagoService>();
 
         services.AddSingleton<IArchivoCifrado, ArchivoCifradoService>();
+
+        services.AddHttpClient<IVerificadorPasswordFiltrada, HibpVerificadorPasswordFiltrada>();
 
         return services;
     }

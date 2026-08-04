@@ -107,6 +107,7 @@ export class DisponibilidadComponent implements OnInit {
   }
 
   async eliminar(id: string): Promise<void> {
+    if (!confirm('¿Eliminar esta regla de disponibilidad?')) return;
     try {
       await this.disponibilidadService.eliminar(id);
       await this.cargarReglas();

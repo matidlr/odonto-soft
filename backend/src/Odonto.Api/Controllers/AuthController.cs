@@ -29,6 +29,7 @@ public class AuthController : ControllerBase
     private readonly IEmailSender _emailSender;
     private readonly ILogger<AuthController> _logger;
     private readonly IWebHostEnvironment _environment;
+    private readonly IVerificadorPasswordFiltrada _verificadorPassword;
     private readonly PasswordHasher<Usuario> _passwordHasher = new();
 
     public AuthController(
@@ -36,13 +37,35 @@ public class AuthController : ControllerBase
         IConfiguration configuration,
         IEmailSender emailSender,
         ILogger<AuthController> logger,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IVerificadorPasswordFiltrada verificadorPassword)
     {
         _db = db;
         _configuration = configuration;
         _emailSender = emailSender;
         _logger = logger;
         _environment = environment;
+        _verificadorPassword = verificadorPassword;
+    }
+
+    /// <summary>
+    /// Política de contraseñas centralizada: se usa en todo lugar donde se
+    /// fija una contraseña (registro, reset propio, bootstrap/reset de
+    /// SuperAdmin). Nunca hay que confiar solo en la validación de Angular.
+    /// </summary>
+    private async Task<string?> ValidarPasswordAsync(string password, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(password) || !Validaciones.EsPasswordCompleja(password))
+        {
+            return "La contraseña debe tener al menos 8 caracteres, con una mayúscula, una minúscula y un número.";
+        }
+
+        if (await _verificadorPassword.FueFiltradaAsync(password, ct))
+        {
+            return "Esa contraseña apareció en filtraciones de datos conocidas. Elegí una distinta.";
+        }
+
+        return null;
     }
 
     public record RegistrarOdontologoRequest(
@@ -64,8 +87,8 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> RegistrarOdontologo(RegistrarOdontologoRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
-            return BadRequest(new { message = "La contraseña debe tener al menos 8 caracteres." });
+        var errorPassword = await ValidarPasswordAsync(request.Password, ct);
+        if (errorPassword is not null) return BadRequest(new { message = errorPassword });
 
         if (string.IsNullOrWhiteSpace(request.NombreClinica) || request.NombreClinica.Length > 200)
             return BadRequest(new { message = "El nombre de la clínica es obligatorio y no puede superar los 200 caracteres." });
@@ -174,6 +197,9 @@ public class AuthController : ControllerBase
         if (await _db.Usuarios.IgnoreQueryFilters().AnyAsync(u => u.Rol == Rol.SuperAdmin, ct))
             return Conflict(new { message = "Ya existe un SuperAdmin. Este endpoint es solo para la creación inicial." });
 
+        var errorPasswordBootstrap = await ValidarPasswordAsync(request.Password, ct);
+        if (errorPasswordBootstrap is not null) return BadRequest(new { message = errorPasswordBootstrap });
+
         var usuario = new Usuario
         {
             TenantId = null,
@@ -204,8 +230,8 @@ public class AuthController : ControllerBase
         if (string.IsNullOrEmpty(expectedKey) || request.BootstrapKey != expectedKey)
             return Unauthorized(new { message = "Clave de bootstrap inválida." });
 
-        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 8)
-            return BadRequest(new { message = "La contraseña debe tener al menos 8 caracteres." });
+        var errorPasswordReset = await ValidarPasswordAsync(request.NewPassword, ct);
+        if (errorPasswordReset is not null) return BadRequest(new { message = errorPasswordReset });
 
         var superAdmin = await _db.Usuarios.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Rol == Rol.SuperAdmin, ct);
         if (superAdmin is null)
@@ -278,9 +304,46 @@ public class AuthController : ControllerBase
         _logger.LogInformation("Login exitoso para {Email} desde {IP}",
             request.Email, HttpContext.Connection.RemoteIpAddress);
 
+        var userAgent = Request.Headers.UserAgent.ToString();
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        await AvisarSiDispositivoNuevoAsync(usuario, userAgent, ip, ct);
+
         var token = GenerarToken(usuario);
-        await EmitirRefreshTokenAsync(usuario, ct);
+        await EmitirRefreshTokenAsync(usuario, userAgent, ip, ct);
         return Ok(new { token, rol = usuario.Rol.ToString(), tenantId = usuario.TenantId });
+    }
+
+    /// <summary>
+    /// Si nunca vimos este User-Agent para este usuario (ni un refresh token
+    /// viejo con ese mismo valor, esté vigente o no), es la primera vez que
+    /// inicia sesión desde este navegador/dispositivo: se avisa por email.
+    /// Best-effort: si el email falla, no rompe el login.
+    /// </summary>
+    private async Task AvisarSiDispositivoNuevoAsync(Usuario usuario, string userAgent, string? ip, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(userAgent)) return;
+
+        var yaConocido = await _db.RefreshTokens
+            .AnyAsync(r => r.UsuarioId == usuario.Id && r.UserAgent == userAgent, ct);
+        if (yaConocido) return;
+
+        try
+        {
+            var html = $@"
+                <p>Se inició sesión en tu cuenta de Odonto SaaS desde un dispositivo que no reconocíamos.</p>
+                <p><strong>Fecha:</strong> {DateTime.UtcNow:dd/MM/yyyy HH:mm} UTC<br/>
+                <strong>Dirección IP:</strong> {System.Net.WebUtility.HtmlEncode(ip ?? "desconocida")}<br/>
+                <strong>Dispositivo/navegador:</strong> {System.Net.WebUtility.HtmlEncode(userAgent)}</p>
+                <p>Si fuiste vos, no hace falta que hagas nada.</p>
+                <p>Si no reconocés este acceso, cambiá tu contraseña ahora (""¿Olvidaste tu contraseña?"" en el login)
+                y después cerrá sesión en todos los dispositivos desde Configuración.</p>";
+
+            await _emailSender.EnviarAsync(usuario.Email, null, "Nuevo inicio de sesión en tu cuenta", html, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo enviar el aviso de dispositivo nuevo a {Email}", usuario.Email);
+        }
     }
 
     /// <summary>
@@ -318,7 +381,7 @@ public class AuthController : ControllerBase
 
         var usuario = refreshToken.Usuario;
         var nuevoToken = GenerarToken(usuario);
-        await EmitirRefreshTokenAsync(usuario, ct);
+        await EmitirRefreshTokenAsync(usuario, Request.Headers.UserAgent.ToString(), HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
 
         return Ok(new { token = nuevoToken, rol = usuario.Rol.ToString(), tenantId = usuario.TenantId });
     }
@@ -376,6 +439,66 @@ public class AuthController : ControllerBase
         return Ok(new { message = $"Se cerraron {tokens.Count} sesión(es) activa(s)." });
     }
 
+    public record SesionResponse(Guid Id, string? UserAgent, string? IpAddress, DateTime FechaCreacion, DateTime FechaExpiracion, bool EsActual);
+
+    /// <summary>Lista las sesiones activas (refresh tokens vigentes) del usuario logueado.</summary>
+    [HttpGet("sesiones")]
+    [Authorize]
+    public async Task<IActionResult> GetSesiones(CancellationToken ct)
+    {
+        var usuarioIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(usuarioIdClaim, out var usuarioId))
+            return Unauthorized();
+
+        var cookieToken = Request.Cookies[RefreshCookieName];
+        var hashActual = string.IsNullOrEmpty(cookieToken) ? null : HashToken(cookieToken);
+
+        var sesiones = await _db.RefreshTokens
+            .Where(r => r.UsuarioId == usuarioId && !r.Revocado && r.FechaExpiracion > DateTime.UtcNow)
+            .OrderByDescending(r => r.FechaCreacion)
+            .Select(r => new SesionResponse(r.Id, r.UserAgent, r.IpAddress, r.FechaCreacion, r.FechaExpiracion, r.TokenHash == hashActual))
+            .ToListAsync(ct);
+
+        return Ok(sesiones);
+    }
+
+    /// <summary>
+    /// Cierra una sesión puntual de la lista (no todas). Solo puede cerrar
+    /// sesiones propias — nunca de otro usuario, aunque adivine el Id.
+    /// </summary>
+    [HttpDelete("sesiones/{id}")]
+    [Authorize]
+    public async Task<IActionResult> CerrarSesion(Guid id, CancellationToken ct)
+    {
+        var usuarioIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(usuarioIdClaim, out var usuarioId))
+            return Unauthorized();
+
+        var refreshToken = await _db.RefreshTokens
+            .FirstOrDefaultAsync(r => r.Id == id && r.UsuarioId == usuarioId, ct);
+        if (refreshToken is null) return NotFound();
+
+        if (!refreshToken.Revocado)
+        {
+            refreshToken.Revocado = true;
+            refreshToken.FechaRevocado = DateTime.UtcNow;
+            await _db.SaveChangesAsync(ct);
+        }
+
+        // Si la sesión que se cerró es la de esta misma pestaña, borramos
+        // también la cookie acá para no dejarla "viva" del lado del navegador.
+        var cookieToken = Request.Cookies[RefreshCookieName];
+        if (!string.IsNullOrEmpty(cookieToken) && HashToken(cookieToken) == refreshToken.TokenHash)
+        {
+            Response.Cookies.Delete(RefreshCookieName, CookieOptionsBase());
+        }
+
+        _logger.LogWarning("Sesión {RefreshTokenId} cerrada individualmente por usuario {UsuarioId} desde {IP}",
+            refreshToken.Id, usuarioId, HttpContext.Connection.RemoteIpAddress);
+
+        return Ok(new { message = "Sesión cerrada." });
+    }
+
     public record OlvidePasswordRequest(string Email);
 
     [HttpPost("olvide-password")]
@@ -428,8 +551,8 @@ public class AuthController : ControllerBase
     {
         // No confiamos solo en la validación del frontend: esto se puede
         // llamar directo a la API salteándola.
-        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 8)
-            return BadRequest(new { message = "La contraseña debe tener al menos 8 caracteres." });
+        var errorPasswordResetSelf = await ValidarPasswordAsync(request.NewPassword, ct);
+        if (errorPasswordResetSelf is not null) return BadRequest(new { message = errorPasswordResetSelf });
 
         var tokenRow = await _db.TokensResetPassword
             .FirstOrDefaultAsync(t => t.Token == request.Token, ct);
@@ -493,7 +616,7 @@ public class AuthController : ControllerBase
     private const string RefreshCookieName = "odonto_refresh";
     private static readonly TimeSpan DuracionRefreshToken = TimeSpan.FromDays(30);
 
-    private async Task EmitirRefreshTokenAsync(Usuario usuario, CancellationToken ct)
+    private async Task EmitirRefreshTokenAsync(Usuario usuario, string? userAgent, string? ip, CancellationToken ct)
     {
         var tokenBytes = RandomNumberGenerator.GetBytes(32);
         var tokenPlano = Convert.ToBase64String(tokenBytes)
@@ -503,7 +626,9 @@ public class AuthController : ControllerBase
         {
             UsuarioId = usuario.Id,
             TokenHash = HashToken(tokenPlano),
-            FechaExpiracion = DateTime.UtcNow.Add(DuracionRefreshToken)
+            FechaExpiracion = DateTime.UtcNow.Add(DuracionRefreshToken),
+            UserAgent = string.IsNullOrWhiteSpace(userAgent) ? null : userAgent,
+            IpAddress = ip
         });
         await _db.SaveChangesAsync(ct);
 

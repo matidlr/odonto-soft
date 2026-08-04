@@ -19,4 +19,10 @@ public class RefreshToken
     public DateTime FechaExpiracion { get; set; }
     public bool Revocado { get; set; }
     public DateTime? FechaRevocado { get; set; }
+
+    // Para el aviso de "inicio de sesión desde dispositivo nuevo" y para
+    // mostrar la lista de sesiones activas (con posibilidad de cerrar una
+    // en particular). Nunca se usan para autorizar nada, solo informativos.
+    public string? UserAgent { get; set; }
+    public string? IpAddress { get; set; }
 }

@@ -34,8 +34,13 @@ export class ResetearPasswordComponent implements OnInit {
   async onSubmit(): Promise<void> {
     this.error.set(null);
 
-    if (this.password.length < 8) {
-      this.error.set('La contraseña debe tener al menos 8 caracteres.');
+    const esCompleja =
+      this.password.length >= 8 &&
+      /[A-Z]/.test(this.password) &&
+      /[a-z]/.test(this.password) &&
+      /[0-9]/.test(this.password);
+    if (!esCompleja) {
+      this.error.set('La contraseña debe tener al menos 8 caracteres, con una mayúscula, una minúscula y un número.');
       return;
     }
     if (this.password !== this.confirmarPassword) {

@@ -44,4 +44,15 @@ public static class Validaciones
 
     public static bool EsNumeroFdiValido(int? numeroFdi) =>
         numeroFdi is null || NumerosFdiValidos.Contains(numeroFdi.Value);
+
+    /// <summary>
+    /// Política de contraseñas: al menos 8 caracteres, con al menos una
+    /// mayúscula, una minúscula y un número (sin exigir símbolos, para no
+    /// hacerla incómoda en el uso diario).
+    /// </summary>
+    public static bool EsPasswordCompleja(string password) =>
+        password.Length >= 8
+        && password.Any(char.IsUpper)
+        && password.Any(char.IsLower)
+        && password.Any(char.IsDigit);
 }

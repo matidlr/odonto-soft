@@ -24,6 +24,15 @@ interface RegistrarOdontologoResponse {
   estado: string;
 }
 
+export interface Sesion {
+  id: string;
+  userAgent: string | null;
+  ipAddress: string | null;
+  fechaCreacion: string;
+  fechaExpiracion: string;
+  esActual: boolean;
+}
+
 const STORAGE_KEY = 'odonto_sesion';
 
 // Servicio de autenticación: hace login/registro contra la API, guarda el
@@ -116,6 +125,21 @@ export class AuthService {
       return response.token;
     } catch {
       return null;
+    }
+  }
+
+  async getSesiones(): Promise<Sesion[]> {
+    return firstValueFrom(this.http.get<Sesion[]>(`${API_BASE_URL}/auth/sesiones`));
+  }
+
+  /// Cierra una sesión puntual (no todas). Si era la de esta pestaña, el
+  /// backend ya borra la cookie; igual limpiamos el estado local acá.
+  async cerrarSesion(id: string, esActual: boolean): Promise<void> {
+    await firstValueFrom(this.http.delete(`${API_BASE_URL}/auth/sesiones/${id}`));
+    if (esActual) {
+      localStorage.removeItem(STORAGE_KEY);
+      this.sesionSignal.set(null);
+      this.router.navigateByUrl('/login');
     }
   }
 

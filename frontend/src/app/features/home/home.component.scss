@@ -1,7 +1,33 @@
+.encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+
+  h1 {
+    margin: 0 0 0.35rem;
+    font-size: 1.5rem;
+    color: #1e293b;
+  }
+}
+
+.rol-badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 .aviso {
   padding: 1rem;
   border-radius: 8px;
   max-width: 480px;
+  margin-bottom: 1.5rem;
 }
 
 .aviso-pendiente {
