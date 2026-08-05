@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Odonto.Api.Logging;
 using Odonto.Api.Validacion;
 using Odonto.Application.Common.Interfaces;
 using Odonto.Domain.Common;
@@ -247,7 +248,7 @@ public class AuthController : ControllerBase
         await _db.SaveChangesAsync(ct);
 
         _logger.LogWarning("Contraseña de SuperAdmin reseteada (vía bootstrap key) para {Email} desde {IP}",
-            superAdmin.Email, HttpContext.Connection.RemoteIpAddress);
+            SaneadorLogs.EnmascararEmail(superAdmin.Email), HttpContext.Connection.RemoteIpAddress);
 
         return Ok(new { superAdmin.Email, message = "Contraseña actualizada." });
     }
@@ -271,14 +272,14 @@ public class AuthController : ControllerBase
         if (usuario is null || !usuario.EstaActivo)
         {
             _logger.LogWarning("Login fallido (usuario inexistente o inactivo) para {Email} desde {IP}",
-                request.Email, HttpContext.Connection.RemoteIpAddress);
+                SaneadorLogs.EnmascararEmail(request.Email), HttpContext.Connection.RemoteIpAddress);
             return Unauthorized(new { message = "Credenciales inválidas." });
         }
 
         if (usuario.BloqueadoHasta is DateTime bloqueadoHasta && bloqueadoHasta > DateTime.UtcNow)
         {
             _logger.LogWarning("Login rechazado (cuenta bloqueada) para {Email} desde {IP}",
-                request.Email, HttpContext.Connection.RemoteIpAddress);
+                SaneadorLogs.EnmascararEmail(request.Email), HttpContext.Connection.RemoteIpAddress);
             return StatusCode(StatusCodes.Status423Locked, new
             {
                 message = "Esta cuenta está bloqueada temporalmente por varios intentos fallidos. Probá de nuevo en unos minutos."
@@ -294,12 +295,12 @@ public class AuthController : ControllerBase
                 usuario.BloqueadoHasta = DateTime.UtcNow.Add(DuracionBloqueo);
                 usuario.IntentosFallidos = 0;
                 _logger.LogWarning("Cuenta bloqueada por {Minutos} minutos tras intentos fallidos repetidos: {Email} desde {IP}",
-                    DuracionBloqueo.TotalMinutes, request.Email, HttpContext.Connection.RemoteIpAddress);
+                    DuracionBloqueo.TotalMinutes, SaneadorLogs.EnmascararEmail(request.Email), HttpContext.Connection.RemoteIpAddress);
             }
             await _db.SaveChangesAsync(ct);
 
             _logger.LogWarning("Login fallido (contraseña incorrecta) para {Email} desde {IP}",
-                request.Email, HttpContext.Connection.RemoteIpAddress);
+                SaneadorLogs.EnmascararEmail(request.Email), HttpContext.Connection.RemoteIpAddress);
             return Unauthorized(new { message = "Credenciales inválidas." });
         }
 
@@ -308,7 +309,7 @@ public class AuthController : ControllerBase
         await _db.SaveChangesAsync(ct);
 
         _logger.LogInformation("Login exitoso para {Email} desde {IP}",
-            request.Email, HttpContext.Connection.RemoteIpAddress);
+            SaneadorLogs.EnmascararEmail(request.Email), HttpContext.Connection.RemoteIpAddress);
 
         var userAgent = Request.Headers.UserAgent.ToString();
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -348,7 +349,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "No se pudo enviar el aviso de dispositivo nuevo a {Email}", usuario.Email);
+            _logger.LogWarning(ex, "No se pudo enviar el aviso de dispositivo nuevo a {Email}", SaneadorLogs.EnmascararEmail(usuario.Email));
         }
     }
 
@@ -535,7 +536,7 @@ public class AuthController : ControllerBase
         await _db.SaveChangesAsync(ct);
 
         _logger.LogWarning("Pedido de reseteo de contraseña para {Email} desde {IP}",
-            usuario.Email, HttpContext.Connection.RemoteIpAddress);
+            SaneadorLogs.EnmascararEmail(usuario.Email), HttpContext.Connection.RemoteIpAddress);
 
         var frontendUrl = _configuration["Cors:AllowedOrigin"] ?? "http://localhost:4200";
         var link = $"{frontendUrl}/resetear-password?token={token}";
@@ -578,7 +579,7 @@ public class AuthController : ControllerBase
         await _db.SaveChangesAsync(ct);
 
         _logger.LogWarning("Contraseña cambiada (vía link de reseteo) para {Email} desde {IP}",
-            usuario.Email, HttpContext.Connection.RemoteIpAddress);
+            SaneadorLogs.EnmascararEmail(usuario.Email), HttpContext.Connection.RemoteIpAddress);
 
         return Ok(new { message = "Contraseña actualizada. Ya podés iniciar sesión." });
     }
