@@ -27,7 +27,7 @@ public class AuthController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IConfiguration _configuration;
-    private readonly IEmailSender _emailSender;
+    private readonly IEmailQueue _emailQueue;
     private readonly ILogger<AuthController> _logger;
     private readonly IWebHostEnvironment _environment;
     private readonly IVerificadorPasswordFiltrada _verificadorPassword;
@@ -36,14 +36,14 @@ public class AuthController : ControllerBase
     public AuthController(
         AppDbContext db,
         IConfiguration configuration,
-        IEmailSender emailSender,
+        IEmailQueue emailQueue,
         ILogger<AuthController> logger,
         IWebHostEnvironment environment,
         IVerificadorPasswordFiltrada verificadorPassword)
     {
         _db = db;
         _configuration = configuration;
-        _emailSender = emailSender;
+        _emailQueue = emailQueue;
         _logger = logger;
         _environment = environment;
         _verificadorPassword = verificadorPassword;
@@ -324,7 +324,8 @@ public class AuthController : ControllerBase
     /// Si nunca vimos este User-Agent para este usuario (ni un refresh token
     /// viejo con ese mismo valor, esté vigente o no), es la primera vez que
     /// inicia sesión desde este navegador/dispositivo: se avisa por email.
-    /// Best-effort: si el email falla, no rompe el login.
+    /// El envío se encola (no bloquea el login) — si falla, el worker de la
+    /// cola ya lo loguea, así que acá no hace falta try/catch.
     /// </summary>
     private async Task AvisarSiDispositivoNuevoAsync(Usuario usuario, string userAgent, string? ip, CancellationToken ct)
     {
@@ -334,23 +335,16 @@ public class AuthController : ControllerBase
             .AnyAsync(r => r.UsuarioId == usuario.Id && r.UserAgent == userAgent, ct);
         if (yaConocido) return;
 
-        try
-        {
-            var html = $@"
-                <p>Se inició sesión en tu cuenta de Odonto SaaS desde un dispositivo que no reconocíamos.</p>
-                <p><strong>Fecha:</strong> {DateTime.UtcNow:dd/MM/yyyy HH:mm} UTC<br/>
-                <strong>Dirección IP:</strong> {System.Net.WebUtility.HtmlEncode(ip ?? "desconocida")}<br/>
-                <strong>Dispositivo/navegador:</strong> {System.Net.WebUtility.HtmlEncode(userAgent)}</p>
-                <p>Si fuiste vos, no hace falta que hagas nada.</p>
-                <p>Si no reconocés este acceso, cambiá tu contraseña ahora (""¿Olvidaste tu contraseña?"" en el login)
-                y después cerrá sesión en todos los dispositivos desde Configuración.</p>";
+        var html = $@"
+            <p>Se inició sesión en tu cuenta de Odonto SaaS desde un dispositivo que no reconocíamos.</p>
+            <p><strong>Fecha:</strong> {DateTime.UtcNow:dd/MM/yyyy HH:mm} UTC<br/>
+            <strong>Dirección IP:</strong> {System.Net.WebUtility.HtmlEncode(ip ?? "desconocida")}<br/>
+            <strong>Dispositivo/navegador:</strong> {System.Net.WebUtility.HtmlEncode(userAgent)}</p>
+            <p>Si fuiste vos, no hace falta que hagas nada.</p>
+            <p>Si no reconocés este acceso, cambiá tu contraseña ahora (""¿Olvidaste tu contraseña?"" en el login)
+            y después cerrá sesión en todos los dispositivos desde Configuración.</p>";
 
-            await _emailSender.EnviarAsync(usuario.Email, null, "Nuevo inicio de sesión en tu cuenta", html, ct);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "No se pudo enviar el aviso de dispositivo nuevo a {Email}", SaneadorLogs.EnmascararEmail(usuario.Email));
-        }
+        _emailQueue.Encolar(usuario.Email, null, "Nuevo inicio de sesión en tu cuenta", html);
     }
 
     /// <summary>
@@ -545,7 +539,7 @@ public class AuthController : ControllerBase
             <p><a href=""{link}"">Hacé clic acá para elegir una nueva contraseña</a></p>
             <p>Este enlace vence en 1 hora. Si no fuiste vos, podés ignorar este email.</p>";
 
-        await _emailSender.EnviarAsync(usuario.Email, null, "Restablecer tu contraseña", html, ct);
+        _emailQueue.Encolar(usuario.Email, null, "Restablecer tu contraseña", html);
 
         return respuestaGenerica;
     }

@@ -26,6 +26,10 @@ public static class DependencyInjection
         services.AddHttpClient<IEmailSender, BrevoEmailSender>();
         services.AddHostedService<RecordatorioBackgroundService>();
 
+        services.AddSingleton<EmailQueue>();
+        services.AddSingleton<IEmailQueue>(sp => sp.GetRequiredService<EmailQueue>());
+        services.AddHostedService<EmailQueueBackgroundService>();
+
         services.AddHttpClient<MercadoPagoService>();
 
         services.AddSingleton<IArchivoCifrado, ArchivoCifradoService>();
