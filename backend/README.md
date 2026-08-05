@@ -101,6 +101,17 @@ corre una persona a mano, no la aplicación, y `restaurar-prueba.ps1`
 necesita poder crear una base nueva (`CREATE DATABASE`), algo que
 `odonto_app` no puede hacer ni debería.
 
+## Logs
+
+El logging lo maneja Serilog (configurado en `Program.cs`, no en `appsettings.json`). Se escribe en dos lugares a la vez:
+
+- **Consola**: lo que ves mientras corre `dotnet run`.
+- **Archivo**: `src/Odonto.Api/logs/odonto-AAAAMMDD.log` (un archivo por día, se guardan los últimos 30 días y después se borran solos). Este archivo persiste aunque cierres la terminal o reinicies el backend — es lo que hay que mirar si un usuario dice "el sistema no funciona" y ya pasó el momento.
+
+Cada línea de log de un request incluye método, path, código de estado y tiempo de respuesta. Los logs de la aplicación (los que arrancan con `_logger.LogWarning(...)`, etc., en los controllers) llevan además `TenantId` y `UsuarioId` de quién hizo el request, para poder rastrear qué pasó en una clínica puntual.
+
+La carpeta `logs/` nunca va al repo (está en `.gitignore`).
+
 ## Cómo correrlo con Docker
 
 Desde la raíz del repo (donde está `docker-compose.yml`):

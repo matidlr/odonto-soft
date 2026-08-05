@@ -8,8 +8,11 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Odonto.Api.Authorization;
+using Odonto.Api.Logging;
 using Odonto.Infrastructure;
 using Odonto.Infrastructure.Persistence;
+using Serilog;
+using Serilog.Events;
 
 // Por defecto, .NET remapea nombres de claims "conocidos" (sub, etc.) a URIs
 // largas de esquemas antiguos al validar el JWT. Lo desactivamos para que
@@ -18,6 +21,26 @@ using Odonto.Infrastructure.Persistence;
 JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Logging estructurado con Serilog: consola (para cuando corrés con dotnet
+// run) + archivo en disco que persiste entre reinicios (para poder
+// responder "¿qué pasó?" días después, no solo mientras la terminal está
+// abierta). Un archivo por día, se guardan los últimos 30 días.
+// Microsoft.AspNetCore/EntityFrameworkCore bajan a Warning para no llenar
+// el log de ruido (SQL de cada consulta, etc.) — lo importante es errores,
+// excepciones, y el resumen de cada request (método, path, status, tiempo).
+builder.Host.UseSerilog((context, services, configuration) => configuration
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console(
+        outputTemplate: "{Timestamp:HH:mm:ss} [{Level:u3}] {Message:lj} (Tenant={TenantId} Usuario={UsuarioId}){NewLine}{Exception}")
+    .WriteTo.File(
+        Path.Combine(context.HostingEnvironment.ContentRootPath, "logs", "odonto-.log"),
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 30,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj} (Tenant={TenantId} Usuario={UsuarioId}){NewLine}{Exception}"));
 
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -199,8 +222,18 @@ else
             {
                 var logger = context.RequestServices.GetRequiredService<ILoggerFactory>()
                     .CreateLogger("GlobalExceptionHandler");
-                logger.LogError(feature.Error, "Error no controlado en {Method} {Path}",
-                    context.Request.Method, context.Request.Path);
+                // TenantId/UsuarioId se leen directo del claim acá (en vez de
+                // depender del LogContext de más abajo en el pipeline) porque
+                // una excepción puede cortar la ejecución antes de que ese
+                // middleware llegue a "empujar" esas propiedades.
+                //
+                // Method y Path vienen del request, así que en teoría los
+                // controla quien nos manda el pedido — se sanean (se sacan
+                // \r y \n) antes de loguearlos para que nadie pueda inyectar
+                // saltos de línea que simulen líneas de log falsas.
+                logger.LogError(feature.Error, "Error no controlado en {Method} {Path} (Tenant={TenantId} Usuario={UsuarioId})",
+                    SaneadorLogs.Limpiar(context.Request.Method), SaneadorLogs.Limpiar(context.Request.Path.Value),
+                    context.User.FindFirst("tenant_id")?.Value, context.User.FindFirst("sub")?.Value);
             }
 
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
@@ -247,10 +280,39 @@ if (app.Environment.IsDevelopment())
     db.Database.Migrate();
 }
 
+// Log de una línea por cada request (método, path, status, tiempo de
+// respuesta), con TenantId/UsuarioId leídos directo del claim: no depende
+// del middleware de más abajo, así que sale igual sin importar en qué
+// punto del pipeline haya fallado o terminado el request.
+app.UseSerilogRequestLogging(options =>
+{
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        diagnosticContext.Set("TenantId", httpContext.User.FindFirst("tenant_id")?.Value);
+        diagnosticContext.Set("UsuarioId", httpContext.User.FindFirst("sub")?.Value);
+    };
+});
+
 app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+
+// A partir de acá el usuario ya está autenticado: "empujamos" TenantId y
+// UsuarioId al contexto de logging de Serilog para que TODOS los logs que
+// se generen mientras se procesa este request (los de cualquier controller,
+// sin tener que tocarlos uno por uno) queden etiquetados con quién y de qué
+// clínica, sin depender de que cada log los agregue a mano.
+app.Use(async (context, next) =>
+{
+    var tenantId = context.User.FindFirst("tenant_id")?.Value;
+    var usuarioId = context.User.FindFirst("sub")?.Value;
+    using (Serilog.Context.LogContext.PushProperty("TenantId", tenantId))
+    using (Serilog.Context.LogContext.PushProperty("UsuarioId", usuarioId))
+    {
+        await next();
+    }
+});
 
 app.MapControllers();
 
