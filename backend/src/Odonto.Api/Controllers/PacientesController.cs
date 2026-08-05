@@ -57,6 +57,14 @@ public class PacientesController : ControllerBase
         return null;
     }
 
+    // Tope de seguridad: nunca traer una lista sin límite (si una clínica
+    // llega a tener miles de pacientes, esto evita una consulta gigante sin
+    // querer). No es paginación real todavía — el día que una clínica se
+    // acerque a este número, ahí sí hace falta paginación con búsqueda del
+    // lado del servidor (hoy el buscador de la pantalla filtra en el
+    // navegador sobre la lista ya cargada).
+    private const int LimiteListado = 500;
+
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] Guid? odontologoId,
@@ -71,6 +79,8 @@ public class PacientesController : ControllerBase
         if (!incluirInactivos) query = query.Where(p => p.Activo);
 
         var pacientes = await query
+            .OrderBy(p => p.Nombre)
+            .Take(LimiteListado)
             .Select(p => new
             {
                 p.Id,
