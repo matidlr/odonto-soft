@@ -25,22 +25,13 @@ public class TenantsController : ControllerBase
         _logger = logger;
     }
 
-    // El JWT ya no lleva el email (solo UserId, ClinicaId y Rol), así que
-    // para los logs de auditoría lo buscamos en la base a partir del
-    // UsuarioId del token. Son acciones poco frecuentes (activar/suspender/
-    // cambiar plan), así que una consulta extra acá no pesa.
-    private async Task<string> IdentificacionDelSuperAdmin(CancellationToken ct)
+    // Devuelve el UsuarioId (no el email): esto solo se usa para loguear
+    // quién hizo la acción, y un email es información personal que no debe
+    // terminar en un archivo de log. El GUID alcanza para auditar y, si
+    // hace falta, se puede buscar el email en la base a partir de él.
+    private string IdentificacionDelSuperAdmin()
     {
-        var usuarioIdClaim = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
-        if (!Guid.TryParse(usuarioIdClaim, out var usuarioId))
-            return "SuperAdmin desconocido";
-
-        var email = await _db.Usuarios.IgnoreQueryFilters()
-            .Where(u => u.Id == usuarioId)
-            .Select(u => u.Email)
-            .FirstOrDefaultAsync(ct);
-
-        return email ?? usuarioId.ToString();
+        return User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value ?? "SuperAdmin desconocido";
     }
 
     [HttpGet]
@@ -110,7 +101,7 @@ public class TenantsController : ControllerBase
         await _db.SaveChangesAsync(ct);
 
         _logger.LogWarning("SuperAdmin {SuperAdmin} cambió el plan del tenant {TenantId} a {Plan}",
-            await IdentificacionDelSuperAdmin(ct), tenant.Id, plan.Nombre);
+            IdentificacionDelSuperAdmin(), tenant.Id, plan.Nombre);
 
         return Ok(new { tenant.Id, PlanId = plan.Id, PlanNombre = plan.Nombre });
     }
@@ -162,7 +153,7 @@ public class TenantsController : ControllerBase
         tenant.Estado = TenantEstado.Activo;
         await _db.SaveChangesAsync(ct);
 
-        _logger.LogWarning("SuperAdmin {SuperAdmin} activó el tenant {TenantId}", await IdentificacionDelSuperAdmin(ct), tenant.Id);
+        _logger.LogWarning("SuperAdmin {SuperAdmin} activó el tenant {TenantId}", IdentificacionDelSuperAdmin(), tenant.Id);
 
         return Ok(new { tenant.Id, Estado = tenant.Estado.ToString() });
     }
@@ -177,7 +168,7 @@ public class TenantsController : ControllerBase
         tenant.Estado = TenantEstado.Suspendido;
         await _db.SaveChangesAsync(ct);
 
-        _logger.LogWarning("SuperAdmin {SuperAdmin} suspendió el tenant {TenantId}", await IdentificacionDelSuperAdmin(ct), tenant.Id);
+        _logger.LogWarning("SuperAdmin {SuperAdmin} suspendió el tenant {TenantId}", IdentificacionDelSuperAdmin(), tenant.Id);
 
         return Ok(new { tenant.Id, Estado = tenant.Estado.ToString() });
     }

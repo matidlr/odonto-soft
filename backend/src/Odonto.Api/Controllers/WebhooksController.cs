@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Odonto.Api.Logging;
 using Odonto.Domain.Common;
 using Odonto.Infrastructure.Payments;
 using Odonto.Infrastructure.Persistence;
@@ -41,8 +42,12 @@ public class WebhooksController : ControllerBase
     [HttpPost("mercadopago")]
     public async Task<IActionResult> MercadoPago(CancellationToken ct)
     {
-        var type = Request.Query["type"].FirstOrDefault() ?? Request.Query["topic"].FirstOrDefault();
-        var dataId = Request.Query["data.id"].FirstOrDefault() ?? Request.Query["id"].FirstOrDefault();
+        // Esto es un endpoint anónimo (lo llama Mercado Pago, pero cualquiera
+        // podría mandarle un POST): type/dataId vienen del query string, así
+        // que se sanean antes de loguearlos para que nadie pueda inyectar
+        // saltos de línea que simulen líneas de log falsas.
+        var type = SaneadorLogs.Limpiar(Request.Query["type"].FirstOrDefault() ?? Request.Query["topic"].FirstOrDefault());
+        var dataId = SaneadorLogs.Limpiar(Request.Query["data.id"].FirstOrDefault() ?? Request.Query["id"].FirstOrDefault());
         var xSignature = Request.Headers["x-signature"].FirstOrDefault();
         var xRequestId = Request.Headers["x-request-id"].FirstOrDefault();
 
@@ -102,7 +107,7 @@ public class WebhooksController : ControllerBase
             await _db.SaveChangesAsync(ct);
             _logger.LogInformation(
                 "Tenant {TenantId} pasó de {Anterior} a {Nuevo} (pago activo: {PagoActivo}) por webhook MP (preapproval {PreapprovalId}, estado_mp={EstadoMp}).",
-                tenant.Id, estadoAnterior, tenant.Estado, tenant.TienePagoActivo, dataId, estadoMp);
+                tenant.Id, estadoAnterior, tenant.Estado, tenant.TienePagoActivo, dataId, SaneadorLogs.Limpiar(estadoMp));
         }
 
         return Ok();

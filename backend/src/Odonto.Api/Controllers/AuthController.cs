@@ -105,9 +105,15 @@ public class AuthController : ControllerBase
         // El slug queda expuesto en la URL pública (/r/{slug}), así que se
         // restringe a algo que no rompa el routing ni links compartidos:
         // minúsculas, números y guiones medios, sin espacios ni símbolos.
+        // Timeout explícito en el regex: no hace falta para este patrón en
+        // particular (no tiene cuantificadores anidados que se pisen entre
+        // sí, así que no es vulnerable a ReDoS de verdad), pero lo dejamos
+        // como defensa extra igual — si algún día alguien cambia el patrón
+        // por uno más complejo, esto evita que un input raro cuelgue el hilo.
         if (string.IsNullOrWhiteSpace(request.Slug) ||
             request.Slug.Length > 60 ||
-            !System.Text.RegularExpressions.Regex.IsMatch(request.Slug, "^[a-z0-9]+(-[a-z0-9]+)*$"))
+            !System.Text.RegularExpressions.Regex.IsMatch(request.Slug, "^[a-z0-9]+(-[a-z0-9]+)*$",
+                System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1)))
         {
             return BadRequest(new { message = "El slug solo puede tener minúsculas, números y guiones medios (ej: clinica-sonrisas)." });
         }

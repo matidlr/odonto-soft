@@ -34,7 +34,8 @@ public class OdontologosController : ControllerBase
             return "La matrícula es obligatoria y no puede superar los 50 caracteres.";
         if (especialidad?.Length > 150)
             return "La especialidad es demasiado larga.";
-        if (!string.IsNullOrWhiteSpace(colorAgenda) && !System.Text.RegularExpressions.Regex.IsMatch(colorAgenda, "^#[0-9a-fA-F]{6}$"))
+        if (!string.IsNullOrWhiteSpace(colorAgenda) && !System.Text.RegularExpressions.Regex.IsMatch(colorAgenda, "^#[0-9a-fA-F]{6}$",
+                System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1)))
             return "El color de agenda tiene que ser un color hexadecimal (ej: #2563eb).";
         return null;
     }
