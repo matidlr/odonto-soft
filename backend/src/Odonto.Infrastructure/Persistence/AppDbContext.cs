@@ -98,6 +98,12 @@ public class AppDbContext : DbContext
             // desaparecer de los listados de golpe.
             b.Property(p => p.Activo).HasDefaultValue(true);
 
+            // No hay hoy ninguna búsqueda por DNI del lado del servidor,
+            // pero es casi seguro que haga falta pronto (detectar
+            // duplicados al dar de alta, buscar paciente por DNI) y el
+            // índice es barato de mantener.
+            b.HasIndex(p => p.Dni);
+
             b.HasQueryFilter(p => _tenantContext.EsSuperAdmin || p.TenantId == _tenantContext.TenantId);
         });
 
