@@ -54,12 +54,31 @@ public class OdontogramaController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IWebHostEnvironment _env;
     private readonly IArchivoCifrado _cifrado;
+    private readonly ILogger<OdontogramaController> _logger;
 
-    public OdontogramaController(AppDbContext db, IWebHostEnvironment env, IArchivoCifrado cifrado)
+    public OdontogramaController(AppDbContext db, IWebHostEnvironment env, IArchivoCifrado cifrado, ILogger<OdontogramaController> logger)
     {
         _db = db;
         _env = env;
         _cifrado = cifrado;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Best-effort: si guardar el registro en la base falla después de haber
+    /// escrito el archivo a disco, borramos el archivo para no dejar basura
+    /// huérfana. Si el borrado también falla, no tapamos el error original.
+    /// </summary>
+    private void BorrarArchivoFisicoSiExiste(string ruta)
+    {
+        try
+        {
+            if (System.IO.File.Exists(ruta)) System.IO.File.Delete(ruta);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo limpiar el archivo huérfano en {Ruta}.", ruta);
+        }
     }
 
     public record EstadoPiezaResponse(
@@ -316,7 +335,16 @@ public class OdontogramaController : ControllerBase
         };
 
         _db.ArchivosOdontograma.Add(registro);
-        await _db.SaveChangesAsync(ct);
+
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch
+        {
+            BorrarArchivoFisicoSiExiste(rutaCompleta);
+            throw;
+        }
 
         return Ok(new ArchivoResponse(registro.Id, registro.NombreOriginal, registro.ContentType, registro.TamanioBytes, registro.FechaSubida));
     }

@@ -54,6 +54,23 @@ public class ArchivosPacienteController : ControllerBase
         return Guid.TryParse(claim, out var id) ? id : null;
     }
 
+    /// <summary>
+    /// Best-effort: si guardar el registro en la base falla después de haber
+    /// escrito el archivo a disco, borramos el archivo para no dejar basura
+    /// huérfana. Si el borrado también falla, no tapamos el error original.
+    /// </summary>
+    private void BorrarArchivoFisicoSiExiste(string ruta)
+    {
+        try
+        {
+            if (System.IO.File.Exists(ruta)) System.IO.File.Delete(ruta);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo limpiar el archivo huérfano en {Ruta}.", ruta);
+        }
+    }
+
     public record ArchivoPacienteResponse(
         Guid Id,
         CategoriaArchivo Categoria,
@@ -150,7 +167,18 @@ public class ArchivosPacienteController : ControllerBase
         _auditoria.RegistrarAccion(tenantId, pacienteId, "ArchivoPaciente", registro.Id, "Creado",
             $"{registro.NombreOriginal} ({registro.Categoria})");
 
-        await _db.SaveChangesAsync(ct);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch
+        {
+            // El archivo ya se escribió (cifrado) a disco, pero el registro
+            // no se pudo guardar: no lo dejamos huérfano ahí. El manejo
+            // global de excepciones se encarga de informar al usuario.
+            BorrarArchivoFisicoSiExiste(rutaCompleta);
+            throw;
+        }
 
         return Ok(new ArchivoPacienteResponse(
             registro.Id, registro.Categoria, registro.Descripcion, registro.NombreOriginal,
