@@ -4,6 +4,11 @@ import { RouterLink } from '@angular/router';
 import { OdontologoContextoService } from '../../core/odontologo-contexto.service';
 import { Paciente, PacienteService } from '../../core/paciente.service';
 
+export interface GrupoPacientes {
+  letra: string;
+  pacientes: Paciente[];
+}
+
 @Component({
   selector: 'app-pacientes',
   standalone: true,
@@ -21,6 +26,7 @@ export class PacientesComponent implements OnInit {
   mostrarInactivos = signal(false);
 
   nombre = '';
+  apellido = '';
   dni = '';
   telefono = '';
   email = '';
@@ -34,10 +40,36 @@ export class PacientesComponent implements OnInit {
     return this.pacientes().filter(
       (p) =>
         p.nombre.toLowerCase().includes(texto) ||
+        (p.apellido ?? '').toLowerCase().includes(texto) ||
         (p.dni ?? '').toLowerCase().includes(texto) ||
         (p.telefono ?? '').toLowerCase().includes(texto)
     );
   });
+
+  // Agrupa por la inicial del apellido (o del nombre si no tiene apellido
+  // cargado, para no perder pacientes viejos) — la API ya entrega la lista
+  // en ese mismo orden, así que acá solo se arman los grupos, no se
+  // reordena nada.
+  grupos = computed<GrupoPacientes[]>(() => {
+    const mapa = new Map<string, Paciente[]>();
+    for (const p of this.pacientesFiltrados()) {
+      const letra = this.letraDe(p);
+      if (!mapa.has(letra)) mapa.set(letra, []);
+      mapa.get(letra)!.push(p);
+    }
+    return Array.from(mapa.entries())
+      .sort(([a], [b]) => a.localeCompare(b, 'es'))
+      .map(([letra, pacientes]) => ({ letra, pacientes }));
+  });
+
+  letraDe(p: Paciente): string {
+    const base = (p.apellido?.trim() || p.nombre).trim();
+    return base ? base[0].toUpperCase() : '#';
+  }
+
+  nombreCompleto(p: Paciente): string {
+    return p.apellido?.trim() ? `${p.apellido}, ${p.nombre}` : p.nombre;
+  }
 
   constructor(
     private pacienteService: PacienteService,
@@ -84,7 +116,7 @@ export class PacientesComponent implements OnInit {
   }
 
   private limpiarForm(): void {
-    this.nombre = this.dni = this.telefono = this.email = this.fechaNacimiento = '';
+    this.nombre = this.apellido = this.dni = this.telefono = this.email = this.fechaNacimiento = '';
     this.odontologoPrincipalId = '';
   }
 
@@ -94,6 +126,7 @@ export class PacientesComponent implements OnInit {
     try {
       await this.pacienteService.crear({
         nombre: this.nombre,
+        apellido: this.apellido || undefined,
         dni: this.dni || undefined,
         telefono: this.telefono || undefined,
         email: this.email || undefined,

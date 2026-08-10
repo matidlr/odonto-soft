@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -7,7 +8,7 @@ import { Paciente, PacienteService } from '../../core/paciente.service';
 @Component({
   selector: 'app-ficha-paciente',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, DatePipe],
   templateUrl: './ficha-paciente.component.html',
   styleUrl: './ficha-paciente.component.scss'
 })
@@ -22,6 +23,7 @@ export class FichaPacienteComponent implements OnInit {
   accionando = signal(false);
 
   nombre = '';
+  apellido = '';
   dni = '';
   telefono = '';
   email = '';
@@ -32,6 +34,12 @@ export class FichaPacienteComponent implements OnInit {
     const id = this.paciente()?.odontologoPrincipalId;
     if (!id) return '(sin asignar)';
     return this.contexto.odontologos().find((o) => o.id === id)?.nombre ?? '(sin asignar)';
+  });
+
+  nombreCompleto = computed(() => {
+    const p = this.paciente();
+    if (!p) return '';
+    return p.apellido?.trim() ? `${p.apellido}, ${p.nombre}` : p.nombre;
   });
 
   secciones = [
@@ -73,6 +81,7 @@ export class FichaPacienteComponent implements OnInit {
     const p = this.paciente();
     if (!p) return;
     this.nombre = p.nombre;
+    this.apellido = p.apellido ?? '';
     this.dni = p.dni ?? '';
     this.telefono = p.telefono ?? '';
     this.email = p.email ?? '';
@@ -92,6 +101,7 @@ export class FichaPacienteComponent implements OnInit {
     try {
       await this.pacienteService.editar(this.pacienteId, {
         nombre: this.nombre,
+        apellido: this.apellido || undefined,
         dni: this.dni || undefined,
         telefono: this.telefono || undefined,
         email: this.email || undefined,

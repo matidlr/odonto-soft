@@ -11,6 +11,11 @@ public class Paciente
     public Odontologo? OdontologoPrincipal { get; set; }
 
     public string Nombre { get; set; } = string.Empty;
+    // Opcional a propósito: los pacientes cargados antes de este campo
+    // existir quedan con Apellido null (no se puede rellenar solo). Se
+    // usa para agrupar/ordenar la lista alfabéticamente; si está vacío,
+    // el paciente se agrupa por la inicial de Nombre en su lugar.
+    public string? Apellido { get; set; }
     public string? Dni { get; set; }
     public string? Telefono { get; set; }
     public string? Email { get; set; }

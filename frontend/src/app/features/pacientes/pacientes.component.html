@@ -13,6 +13,10 @@
       <input name="nombre" type="text" [(ngModel)]="nombre" required />
     </div>
     <div class="fila">
+      <label>Apellido</label>
+      <input name="apellido" type="text" [(ngModel)]="apellido" />
+    </div>
+    <div class="fila">
       <label>DNI</label>
       <input name="dni" type="text" [(ngModel)]="dni" />
     </div>
@@ -51,7 +55,7 @@
 <div class="buscador">
   <input
     type="text"
-    placeholder="Buscar por nombre, DNI o teléfono..."
+    placeholder="Buscar por nombre, apellido, DNI o teléfono..."
     [ngModel]="busqueda()"
     (ngModelChange)="busqueda.set($event)"
   />
@@ -70,18 +74,37 @@
 } @else if (pacientesFiltrados().length === 0) {
   <p>{{ pacientes().length === 0 ? 'No hay pacientes cargados todavía.' : 'Ningún paciente coincide con la búsqueda.' }}</p>
 } @else {
-  <table class="tabla-pacientes">
-    <thead>
-      <tr>
-        <th>Nombre</th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (p of pacientesFiltrados(); track p.id) {
-        <tr [class.fila-inactiva]="!p.activo" [routerLink]="['/pacientes', p.id]" class="fila-clickeable">
-          <td>{{ p.nombre }} @if (!p.activo) { <span class="etiqueta-baja">Dado de baja</span> }</td>
-        </tr>
-      }
-    </tbody>
-  </table>
+  @for (grupo of grupos(); track grupo.letra) {
+    <div class="grupo-letra">
+      <div class="letra">{{ grupo.letra }}</div>
+      <div class="grid-pacientes">
+        @for (p of grupo.pacientes; track p.id) {
+          <div class="tarjeta-paciente" [class.tarjeta-inactiva]="!p.activo" [routerLink]="['/pacientes', p.id]">
+            <span class="nombre">
+              {{ nombreCompleto(p) }}
+              @if (!p.activo) { <span class="etiqueta-baja">Dado de baja</span> }
+            </span>
+            <div class="accesos">
+              <a
+                class="acceso-directo"
+                title="Odontograma"
+                [routerLink]="['/pacientes', p.id, 'odontograma']"
+                (click)="$event.stopPropagation()"
+              >
+                🦷
+              </a>
+              <a
+                class="acceso-directo"
+                title="Historia clínica"
+                [routerLink]="['/pacientes', p.id, 'historial-clinico']"
+                (click)="$event.stopPropagation()"
+              >
+                📋
+              </a>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
 }

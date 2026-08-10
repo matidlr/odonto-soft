@@ -10,7 +10,7 @@
   <div class="header">
     <div>
       <h1>
-        {{ paciente()!.nombre }}
+        {{ nombreCompleto() }}
         @if (!paciente()!.activo) { <span class="etiqueta-baja">Dado de baja</span> }
       </h1>
     </div>
@@ -40,6 +40,10 @@
       <div class="fila">
         <label>Nombre*</label>
         <input name="nombre" type="text" [(ngModel)]="nombre" required />
+      </div>
+      <div class="fila">
+        <label>Apellido</label>
+        <input name="apellido" type="text" [(ngModel)]="apellido" />
       </div>
       <div class="fila">
         <label>DNI</label>
@@ -81,6 +85,10 @@
   } @else {
     <div class="datos-paciente">
       <div class="dato">
+        <span class="etiqueta">Apellido</span>
+        <span class="valor">{{ paciente()!.apellido || '—' }}</span>
+      </div>
+      <div class="dato">
         <span class="etiqueta">DNI</span>
         <span class="valor">{{ paciente()!.dni || '—' }}</span>
       </div>
@@ -99,6 +107,14 @@
       <div class="dato">
         <span class="etiqueta">Odontólogo principal</span>
         <span class="valor">{{ odontologoPrincipalNombre() }}</span>
+      </div>
+      <div class="dato">
+        <span class="etiqueta">Paciente desde</span>
+        <span class="valor">{{ paciente()!.fechaRegistro ? (paciente()!.fechaRegistro | date: 'dd/MM/yyyy') : '—' }}</span>
+      </div>
+      <div class="dato">
+        <span class="etiqueta">Última visita</span>
+        <span class="valor">{{ paciente()!.ultimaVisita ? (paciente()!.ultimaVisita | date: 'dd/MM/yyyy') : 'Sin visitas registradas' }}</span>
       </div>
     </div>
   }

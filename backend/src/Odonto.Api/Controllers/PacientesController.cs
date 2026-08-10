@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Odonto.Api.Validacion;
 using Odonto.Application.Common.Interfaces;
+using Odonto.Domain.Common;
 using Odonto.Domain.Entities;
 using Odonto.Infrastructure.Persistence;
 
@@ -42,10 +43,12 @@ public class PacientesController : ControllerBase
     /// directamente. No valida OdontologoPrincipalId (necesita ir a la DB,
     /// se hace aparte en cada acción).
     /// </summary>
-    private static string? ValidarDatosPaciente(string nombre, string? dni, string? telefono, string? email, DateTime? fechaNacimiento)
+    private static string? ValidarDatosPaciente(string nombre, string? apellido, string? dni, string? telefono, string? email, DateTime? fechaNacimiento)
     {
         if (string.IsNullOrWhiteSpace(nombre) || nombre.Length > 200)
             return "El nombre es obligatorio y no puede superar los 200 caracteres.";
+        if (apellido?.Length > 200)
+            return "El apellido no puede superar los 200 caracteres.";
         if (dni?.Length > 30)
             return "El DNI es demasiado largo.";
         if (telefono?.Length > 30)
@@ -79,12 +82,17 @@ public class PacientesController : ControllerBase
         if (!incluirInactivos) query = query.Where(p => p.Activo);
 
         var pacientes = await query
-            .OrderBy(p => p.Nombre)
+            // Ordena por Apellido cuando existe; si un paciente viejo no lo
+            // tiene cargado, cae al Nombre (mismo criterio que usa el
+            // frontend para agrupar por letra en la lista).
+            .OrderBy(p => string.IsNullOrWhiteSpace(p.Apellido) ? p.Nombre : p.Apellido)
+            .ThenBy(p => p.Nombre)
             .Take(LimiteListado)
             .Select(p => new
             {
                 p.Id,
                 p.Nombre,
+                p.Apellido,
                 p.Dni,
                 p.Telefono,
                 p.Email,
@@ -106,12 +114,22 @@ public class PacientesController : ControllerBase
             {
                 p.Id,
                 p.Nombre,
+                p.Apellido,
                 p.Dni,
                 p.Telefono,
                 p.Email,
                 p.FechaNacimiento,
+                p.FechaRegistro,
                 p.OdontologoPrincipalId,
-                p.Activo
+                p.Activo,
+                // Última vez que efectivamente vino (turno marcado como
+                // Completado), no la última reserva sin importar si vino o
+                // no. Null si todavía no tuvo ninguna visita completada.
+                UltimaVisita = _db.Turnos
+                    .Where(t => t.PacienteId == p.Id && t.Estado == TurnoEstado.Completado)
+                    .OrderByDescending(t => t.FechaHora)
+                    .Select(t => (DateTime?)t.FechaHora)
+                    .FirstOrDefault()
             })
             .FirstOrDefaultAsync(ct);
 
@@ -122,6 +140,7 @@ public class PacientesController : ControllerBase
 
     public record CrearPacienteRequest(
         string Nombre,
+        string? Apellido,
         string? Dni,
         string? Telefono,
         string? Email,
@@ -131,7 +150,7 @@ public class PacientesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Crear(CrearPacienteRequest request, CancellationToken ct)
     {
-        var error = ValidarDatosPaciente(request.Nombre, request.Dni, request.Telefono, request.Email, request.FechaNacimiento);
+        var error = ValidarDatosPaciente(request.Nombre, request.Apellido, request.Dni, request.Telefono, request.Email, request.FechaNacimiento);
         if (error is not null) return BadRequest(new { message = error });
 
         if (request.OdontologoPrincipalId is Guid odontologoPrincipalId)
@@ -148,6 +167,7 @@ public class PacientesController : ControllerBase
         {
             TenantId = tenantId,
             Nombre = request.Nombre,
+            Apellido = request.Apellido,
             Dni = request.Dni,
             Telefono = request.Telefono,
             Email = request.Email,
@@ -166,6 +186,7 @@ public class PacientesController : ControllerBase
 
     public record EditarPacienteRequest(
         string Nombre,
+        string? Apellido,
         string? Dni,
         string? Telefono,
         string? Email,
@@ -175,7 +196,7 @@ public class PacientesController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Editar(Guid id, EditarPacienteRequest request, CancellationToken ct)
     {
-        var error = ValidarDatosPaciente(request.Nombre, request.Dni, request.Telefono, request.Email, request.FechaNacimiento);
+        var error = ValidarDatosPaciente(request.Nombre, request.Apellido, request.Dni, request.Telefono, request.Email, request.FechaNacimiento);
         if (error is not null) return BadRequest(new { message = error });
 
         if (request.OdontologoPrincipalId is Guid odontologoPrincipalId)
@@ -188,6 +209,7 @@ public class PacientesController : ControllerBase
         if (paciente is null) return NotFound();
 
         _auditoria.RegistrarCampo(paciente.TenantId, paciente.Id, "Paciente", paciente.Id, "Editado", "Nombre", paciente.Nombre, request.Nombre);
+        _auditoria.RegistrarCampo(paciente.TenantId, paciente.Id, "Paciente", paciente.Id, "Editado", "Apellido", paciente.Apellido, request.Apellido);
         _auditoria.RegistrarCampo(paciente.TenantId, paciente.Id, "Paciente", paciente.Id, "Editado", "Dni", paciente.Dni, request.Dni);
         _auditoria.RegistrarCampo(paciente.TenantId, paciente.Id, "Paciente", paciente.Id, "Editado", "Telefono", paciente.Telefono, request.Telefono);
         _auditoria.RegistrarCampo(paciente.TenantId, paciente.Id, "Paciente", paciente.Id, "Editado", "Email", paciente.Email, request.Email);
@@ -197,6 +219,7 @@ public class PacientesController : ControllerBase
             paciente.OdontologoPrincipalId?.ToString(), request.OdontologoPrincipalId?.ToString());
 
         paciente.Nombre = request.Nombre;
+        paciente.Apellido = request.Apellido;
         paciente.Dni = request.Dni;
         paciente.Telefono = request.Telefono;
         paciente.Email = request.Email;

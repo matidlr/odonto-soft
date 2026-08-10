@@ -6,16 +6,24 @@ import { API_BASE_URL } from './config';
 export interface Paciente {
   id: string;
   nombre: string;
+  // Opcional: los pacientes cargados antes de que existiera este campo
+  // (o dados de alta por el link público, que no lo pide) pueden no
+  // tenerlo cargado.
+  apellido: string | null;
   dni: string | null;
   telefono: string | null;
   email: string | null;
   fechaNacimiento: string | null;
   odontologoPrincipalId: string | null;
   activo: boolean;
+  // Solo vienen en getById (la lista no los necesita).
+  fechaRegistro?: string;
+  ultimaVisita?: string | null;
 }
 
 export interface CrearPacienteRequest {
   nombre: string;
+  apellido?: string;
   dni?: string;
   telefono?: string;
   email?: string;

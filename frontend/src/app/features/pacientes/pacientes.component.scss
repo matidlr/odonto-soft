@@ -99,46 +99,94 @@
   margin-bottom: 1rem;
 }
 
-.tabla-pacientes {
-  width: 100%;
-  border-collapse: collapse;
+// Cada letra arma su propia sección: las tarjetas de una misma letra se
+// acomodan una al lado de la otra (ver .grid-pacientes), y al cambiar de
+// letra siempre arranca una fila/sección nueva, porque cada grupo tiene
+// su propio contenedor en vez de compartir una sola grilla continua.
+.grupo-letra {
+  margin-bottom: 1.5rem;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.letra {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-primario);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--color-borde);
+}
+
+// Grilla de pacientes: en pantallas angostas (celular) queda siempre en
+// una sola columna; a partir de los ~640px arma tantas columnas como
+// entren (varias tarjetas por fila), para aprovechar el ancho en
+// computadora en vez de dejar una lista larga y angosta.
+.grid-pacientes {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+}
+
+.tarjeta-paciente {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   background: var(--color-superficie);
   border: 1px solid var(--color-borde);
   border-radius: var(--radio-md);
-  overflow: hidden;
   box-shadow: var(--sombra-sm);
-
-  th,
-  td {
-    text-align: left;
-    padding: 0.7rem 1rem;
-    border-bottom: 1px solid var(--color-borde);
-  }
-
-  tbody tr:hover {
-    background: var(--color-fondo);
-  }
-
-  tbody tr:last-child td {
-    border-bottom: none;
-  }
-
-  th {
-    background: var(--color-fondo);
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: var(--color-texto-suave);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-  }
-}
-
-.fila-clickeable {
+  padding: 0.85rem 1rem;
   cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+
+  &:hover {
+    border-color: var(--color-primario);
+    box-shadow: var(--sombra-md);
+    transform: translateY(-1px);
+  }
+
+  .nombre {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .accesos {
+    display: flex;
+    flex-shrink: 0;
+  }
 }
 
-.fila-inactiva {
+.tarjeta-inactiva {
   opacity: 0.6;
+}
+
+.acceso-directo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  margin-left: 0.25rem;
+  border-radius: var(--radio-sm);
+  text-decoration: none;
+  font-size: 1rem;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: var(--color-primario-suave);
+  }
 }
 
 .etiqueta-baja {
