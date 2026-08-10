@@ -7,7 +7,7 @@ using Odonto.Infrastructure.Persistence;
 namespace Odonto.Api.Controllers;
 
 [ApiController]
-[Route("api/tipos-tratamiento")]
+[Route("api/v1/tipos-tratamiento")]
 [Authorize(Policy = "TenantActivo")]
 public class TiposTratamientoController : ControllerBase
 {

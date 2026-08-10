@@ -19,7 +19,7 @@ namespace Odonto.Api.Controllers;
 /// adjuntos (radiografías, fotos).
 /// </summary>
 [ApiController]
-[Route("api/odontograma")]
+[Route("api/v1/odontograma")]
 [Authorize(Policy = "TenantActivo")]
 public class OdontogramaController : ControllerBase
 {

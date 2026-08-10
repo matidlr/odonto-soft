@@ -12,7 +12,7 @@ namespace Odonto.Api.Controllers;
 /// consultas, no atadas a un diente puntual — para eso está el odontograma).
 /// </summary>
 [ApiController]
-[Route("api/pacientes/{pacienteId}")]
+[Route("api/v1/pacientes/{pacienteId}")]
 [Authorize(Policy = "TenantActivo")]
 public class HistorialClinicoController : ControllerBase
 {

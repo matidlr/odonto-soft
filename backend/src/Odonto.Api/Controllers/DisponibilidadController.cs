@@ -14,7 +14,7 @@ namespace Odonto.Api.Controllers;
 /// día, o abrir un hueco extra fuera del patrón habitual).
 /// </summary>
 [ApiController]
-[Route("api/disponibilidad")]
+[Route("api/v1/disponibilidad")]
 [Authorize(Policy = "TenantActivo")]
 public class DisponibilidadController : ControllerBase
 {

@@ -55,7 +55,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     // Permite probar endpoints protegidos desde Swagger pegando el JWT
-    // que devuelve /api/auth/login (botón "Authorize" arriba a la derecha).
+    // que devuelve /api/v1/auth/login (botón "Authorize" arriba a la derecha).
     options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
         Name = "Authorization",

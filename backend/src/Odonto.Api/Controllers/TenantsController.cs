@@ -13,7 +13,7 @@ namespace Odonto.Api.Controllers;
 /// mostrar el estado (pendiente/activo/suspendido) de su propia cuenta.
 /// </summary>
 [ApiController]
-[Route("api/tenants")]
+[Route("api/v1/tenants")]
 public class TenantsController : ControllerBase
 {
     private readonly AppDbContext _db;

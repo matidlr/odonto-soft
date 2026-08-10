@@ -14,7 +14,7 @@ namespace Odonto.Api.Controllers;
 /// mismos en todas las sedes del odontólogo — no cambian por sede.
 /// </summary>
 [ApiController]
-[Route("api/sedes")]
+[Route("api/v1/sedes")]
 [Authorize(Policy = "TenantActivo")]
 public class SedesController : ControllerBase
 {

@@ -12,7 +12,7 @@ namespace Odonto.Api.Controllers;
 /// esto es lo que faltaba: los datos propios de la clínica.
 /// </summary>
 [ApiController]
-[Route("api/configuracion")]
+[Route("api/v1/configuracion")]
 [Authorize(Policy = "TenantActivo")]
 public class ConfiguracionController : ControllerBase
 {

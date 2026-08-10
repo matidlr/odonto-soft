@@ -15,7 +15,7 @@ namespace Odonto.Api.Controllers;
 /// (confirmar, cancelar, marcar completado o ausente).
 /// </summary>
 [ApiController]
-[Route("api/turnos")]
+[Route("api/v1/turnos")]
 [Authorize(Policy = "TenantActivo")]
 public class TurnosController : ControllerBase
 {

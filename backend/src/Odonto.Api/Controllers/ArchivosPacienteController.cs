@@ -15,7 +15,7 @@ namespace Odonto.Api.Controllers;
 /// odontograma — esa es la diferencia con ArchivoOdontograma/OdontogramaController.
 /// </summary>
 [ApiController]
-[Route("api/pacientes/{pacienteId}/archivos")]
+[Route("api/v1/pacientes/{pacienteId}/archivos")]
 [Authorize(Policy = "TenantActivo")]
 public class ArchivosPacienteController : ControllerBase
 {

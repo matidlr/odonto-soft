@@ -17,7 +17,7 @@ namespace Odonto.Api.Controllers;
 /// registren pacientes en una clínica que no pagó o está suspendida).
 /// </summary>
 [ApiController]
-[Route("api/public")]
+[Route("api/v1/public")]
 [AllowAnonymous]
 public class PublicController : ControllerBase
 {

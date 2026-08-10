@@ -15,7 +15,7 @@ namespace Odonto.Api.Controllers;
 /// historial de cada carga o descuento.
 /// </summary>
 [ApiController]
-[Route("api/insumos")]
+[Route("api/v1/insumos")]
 [Authorize(Policy = "TenantActivo")]
 public class InsumosController : ControllerBase
 {

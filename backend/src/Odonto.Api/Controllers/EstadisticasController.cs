@@ -13,7 +13,7 @@ namespace Odonto.Api.Controllers;
 /// para poder ver una tendencia sin depender del filtro puntual.
 /// </summary>
 [ApiController]
-[Route("api/estadisticas")]
+[Route("api/v1/estadisticas")]
 [Authorize(Policy = "TenantActivo")]
 public class EstadisticasController : ControllerBase
 {

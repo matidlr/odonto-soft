@@ -15,7 +15,7 @@ namespace Odonto.Api.Controllers;
 /// (por ejemplo, alguien que llama por teléfono o no usa el link solo).
 /// </summary>
 [ApiController]
-[Route("api/pacientes")]
+[Route("api/v1/pacientes")]
 [Authorize(Policy = "TenantActivo")]
 public class PacientesController : ControllerBase
 {

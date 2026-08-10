@@ -14,7 +14,7 @@ namespace Odonto.Api.Controllers;
 /// frontend elige entre estos perfiles.
 /// </summary>
 [ApiController]
-[Route("api/odontologos")]
+[Route("api/v1/odontologos")]
 [Authorize(Policy = "TenantActivo")]
 public class OdontologosController : ControllerBase
 {
