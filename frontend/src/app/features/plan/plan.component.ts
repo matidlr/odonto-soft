@@ -18,6 +18,8 @@ export class PlanComponent implements OnInit {
   suscribiendoId = signal<string | null>(null);
   error = signal<string | null>(null);
   vencioPrueba = signal(false);
+  sincronizando = signal(false);
+  mensajeSincronizacion = signal<string | null>(null);
 
   constructor(
     private route: ActivatedRoute,
@@ -54,6 +56,27 @@ export class PlanComponent implements OnInit {
         httpError?.error?.message ?? 'No se pudo iniciar el pago. Probá de nuevo en un momento.'
       );
       this.suscribiendoId.set(null);
+    }
+  }
+
+  async sincronizarEstado(): Promise<void> {
+    this.error.set(null);
+    this.mensajeSincronizacion.set(null);
+    this.sincronizando.set(true);
+    try {
+      const resultado = await this.suscripcionService.sincronizarEstado();
+      this.mensajeSincronizacion.set(
+        resultado.tienePagoActivo
+          ? '¡Listo! Tu pago está activo.'
+          : `Mercado Pago todavía no confirma el pago (estado: ${resultado.estadoMercadoPago}). Probá de nuevo en un momento.`
+      );
+      // Refresca los datos del tenant en pantalla (avisos de suspendido/activo, etc.)
+      this.tenant.set(await this.tenantService.miTenant());
+    } catch (err: unknown) {
+      const httpError = err as { error?: { message?: string } };
+      this.error.set(httpError?.error?.message ?? 'No se pudo sincronizar el estado. Probá de nuevo.');
+    } finally {
+      this.sincronizando.set(false);
     }
   }
 }

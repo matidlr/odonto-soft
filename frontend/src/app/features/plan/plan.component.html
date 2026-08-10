@@ -22,6 +22,18 @@
       } @else if (tenant()!.estado === 'Suspendido') {
         <p class="suspendido">Tu cuenta está suspendida. Suscribite a un plan para reactivarla.</p>
       }
+
+      @if (tenant()!.estado === 'Suspendido' || !tenant()!.tienePagoActivo) {
+        <p class="sincronizar">
+          ¿Ya pagaste y todavía figura como suspendido?
+          <button type="button" [disabled]="sincronizando()" (click)="sincronizarEstado()">
+            {{ sincronizando() ? 'Consultando...' : 'Verificar estado del pago' }}
+          </button>
+        </p>
+        @if (mensajeSincronizacion()) {
+          <p class="mensaje-sincronizacion">{{ mensajeSincronizacion() }}</p>
+        }
+      }
     </div>
   }
 
