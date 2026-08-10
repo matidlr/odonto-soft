@@ -11,12 +11,18 @@ export interface DatosSesion {
   tenantId: string | null;
 }
 
-// Lo que realmente devuelve POST /api/auth/login (no incluye el email:
+// Lo que realmente devuelve POST /api/v1/auth/login (no incluye el email:
 // ya lo sabemos porque lo mandamos nosotros en el request).
 interface LoginResponse {
   token: string;
   rol: string;
   tenantId: string | null;
+}
+
+// El login con Google sí devuelve el email: acá nadie lo tipeó, así que no
+// lo tenemos de antemano como en el login normal.
+interface GoogleLoginResponse extends LoginResponse {
+  email: string;
 }
 
 interface RegistrarOdontologoResponse {
@@ -56,6 +62,17 @@ export class AuthService {
       this.http.post<LoginResponse>(`${API_BASE_URL}/auth/login`, { email, password })
     );
     this.guardarSesion({ ...response, email });
+  }
+
+  // idToken es el JWT que entrega Google Identity Services en el navegador
+  // (botón "Iniciar sesión con Google"). El backend lo valida contra Google
+  // y busca una cuenta existente con ese email — no da de alta clínicas
+  // nuevas, solo loguea cuentas que ya existen.
+  async loginConGoogle(idToken: string): Promise<void> {
+    const response = await firstValueFrom(
+      this.http.post<GoogleLoginResponse>(`${API_BASE_URL}/auth/google`, { idToken })
+    );
+    this.guardarSesion(response);
   }
 
   // Registra el odontólogo/clínica nueva. OJO: esto NO inicia sesión solo

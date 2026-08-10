@@ -35,6 +35,11 @@
       {{ cargando() ? 'Ingresando...' : 'Ingresar' }}
     </button>
 
+    @if (mostrarBotonGoogle) {
+      <div class="separador-o">o</div>
+      <div #googleBotonContainer class="google-boton"></div>
+    }
+
     <p class="link-registro">
       <a routerLink="/olvide-password">¿Olvidaste tu contraseña?</a>
     </p>

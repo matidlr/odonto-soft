@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using Google.Apis.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -21,7 +22,7 @@ namespace Odonto.Api.Controllers;
 // spam (login, alta de clínica, recuperación de contraseña): 5 pedidos
 // por minuto por IP, ver Program.cs.
 [ApiController]
-[Route("api/auth")]
+[Route("api/v1/auth")]
 [EnableRateLimiting("auth")]
 public class AuthController : ControllerBase
 {
@@ -219,7 +220,7 @@ public class AuthController : ControllerBase
         _db.Usuarios.Add(usuario);
         await _db.SaveChangesAsync(ct);
 
-        return Ok(new { usuario.Id, message = "SuperAdmin creado. Iniciá sesión con /api/auth/login." });
+        return Ok(new { usuario.Id, message = "SuperAdmin creado. Iniciá sesión con /api/v1/auth/login." });
     }
 
     public record ResetSuperAdminPasswordRequest(string NewPassword, string BootstrapKey);
@@ -318,6 +319,87 @@ public class AuthController : ControllerBase
         var token = GenerarToken(usuario);
         await EmitirRefreshTokenAsync(usuario, userAgent, ip, ct);
         return Ok(new { token, rol = usuario.Rol.ToString(), tenantId = usuario.TenantId });
+    }
+
+    public record GoogleLoginRequest(string IdToken);
+
+    /// <summary>
+    /// Login con Google para una cuenta que YA existe (no da de alta clínicas
+    /// nuevas — eso sigue siendo solo por /registrar-odontologo). El
+    /// navegador consigue el ID token con Google Identity Services y acá se
+    /// valida contra los servidores de Google (firma, audiencia, vigencia);
+    /// si es válido y el email viene verificado por Google, buscamos el
+    /// Usuario por ese email — es válido porque Email es único en toda la
+    /// tabla (no por tenant), así que no hay ambigüedad de a qué cuenta
+    /// pertenece. No pedimos contraseña acá: la prueba de identidad ya la
+    /// hizo Google.
+    /// </summary>
+    [HttpPost("google")]
+    [AllowAnonymous]
+    public async Task<IActionResult> LoginConGoogle(GoogleLoginRequest request, CancellationToken ct)
+    {
+        var clientId = _configuration["Google:ClientId"];
+        if (string.IsNullOrWhiteSpace(clientId))
+        {
+            _logger.LogError("Login con Google intentado pero Google:ClientId no está configurado.");
+            return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                new { message = "El login con Google no está disponible en este momento." });
+        }
+
+        GoogleJsonWebSignature.Payload payload;
+        try
+        {
+            payload = await GoogleJsonWebSignature.ValidateAsync(request.IdToken, new GoogleJsonWebSignature.ValidationSettings
+            {
+                Audience = new[] { clientId }
+            });
+        }
+        catch (InvalidJwtException ex)
+        {
+            _logger.LogWarning(ex, "Token de Google inválido en intento de login desde {IP}", HttpContext.Connection.RemoteIpAddress);
+            return Unauthorized(new { message = "No se pudo verificar la identidad de Google." });
+        }
+
+        if (!payload.EmailVerified)
+        {
+            _logger.LogWarning("Login con Google rechazado (email no verificado por Google) para {Email}",
+                SaneadorLogs.EnmascararEmail(payload.Email));
+            return Unauthorized(new { message = "Tu email de Google no está verificado." });
+        }
+
+        var usuario = await _db.Usuarios
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Email == payload.Email, ct);
+
+        if (usuario is null || !usuario.EstaActivo)
+        {
+            _logger.LogWarning("Login con Google fallido (no existe cuenta) para {Email}",
+                SaneadorLogs.EnmascararEmail(payload.Email));
+            return Unauthorized(new { message = "No existe una cuenta con este email. Registrate primero con tu clínica." });
+        }
+
+        // Mismo candado que el login por contraseña: si la cuenta está
+        // bloqueada por intentos fallidos recientes, Google no la salta.
+        if (usuario.BloqueadoHasta is DateTime bloqueadoHasta && bloqueadoHasta > DateTime.UtcNow)
+        {
+            _logger.LogWarning("Login con Google rechazado (cuenta bloqueada) para {Email}",
+                SaneadorLogs.EnmascararEmail(usuario.Email));
+            return StatusCode(StatusCodes.Status423Locked, new
+            {
+                message = "Esta cuenta está bloqueada temporalmente por varios intentos fallidos. Probá de nuevo en unos minutos."
+            });
+        }
+
+        _logger.LogInformation("Login con Google exitoso para {Email} desde {IP}",
+            SaneadorLogs.EnmascararEmail(usuario.Email), HttpContext.Connection.RemoteIpAddress);
+
+        var userAgent = Request.Headers.UserAgent.ToString();
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        await AvisarSiDispositivoNuevoAsync(usuario, userAgent, ip, ct);
+
+        var token = GenerarToken(usuario);
+        await EmitirRefreshTokenAsync(usuario, userAgent, ip, ct);
+        return Ok(new { token, rol = usuario.Rol.ToString(), tenantId = usuario.TenantId, email = usuario.Email });
     }
 
     /// <summary>
@@ -656,7 +738,7 @@ public class AuthController : ControllerBase
     //
     // SameSite=Strict (protección CSRF): esta cookie solo la manda el
     // navegador en pedidos que salen del propio frontend (nuestro fetch a
-    // /api/auth/refresh, /logout, /logout-todos). Nunca hace falta que
+    // /api/v1/auth/refresh, /logout, /logout-todos). Nunca hace falta que
     // viaje en una navegación de otro sitio (no es un link ni un botón
     // "Volver"), así que Strict no rompe nada acá y cierra la puerta a que
     // un sitio malicioso la haga viajar de arrastre.
@@ -665,6 +747,6 @@ public class AuthController : ControllerBase
         HttpOnly = true,
         Secure = !_environment.IsDevelopment(),
         SameSite = SameSiteMode.Strict,
-        Path = "/api/auth"
+        Path = "/api/v1/auth"
     };
 }
