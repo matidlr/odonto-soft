@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Odonto.Api.Logging;
-using Odonto.Domain.Common;
+using Odonto.Api.Payments;
 using Odonto.Infrastructure.Payments;
 using Odonto.Infrastructure.Persistence;
 
@@ -18,7 +18,7 @@ namespace Odonto.Api.Controllers;
 /// para confirmar que el aviso viene realmente de Mercado Pago.
 /// </summary>
 [ApiController]
-[Route("api/webhooks")]
+[Route("api/v1/webhooks")]
 [AllowAnonymous]
 public class WebhooksController : ControllerBase
 {
@@ -89,20 +89,9 @@ public class WebhooksController : ControllerBase
         var estadoAnterior = tenant.Estado;
         var pagoActivoAnterior = tenant.TienePagoActivo;
 
-        tenant.Estado = estadoMp switch
-        {
-            "authorized" => TenantEstado.Activo,
-            "paused" => TenantEstado.Suspendido,
-            "cancelled" => TenantEstado.Suspendido,
-            _ => tenant.Estado // "pending" u otro: todavía no cambiamos nada
-        };
+        var cambio = EstadoMercadoPagoMapper.Aplicar(tenant, estadoMp);
 
-        // Independiente del mes de prueba: esto es "¿hay una suscripción de
-        // Mercado Pago pagando de verdad?". Lo usa TenantEstadoService para
-        // decidir si suspender cuando se vence la prueba.
-        tenant.TienePagoActivo = estadoMp == "authorized";
-
-        if (tenant.Estado != estadoAnterior || tenant.TienePagoActivo != pagoActivoAnterior)
+        if (cambio)
         {
             await _db.SaveChangesAsync(ct);
             _logger.LogInformation(

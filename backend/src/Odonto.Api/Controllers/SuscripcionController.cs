@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Odonto.Api.Payments;
 using Odonto.Infrastructure.Payments;
 using Odonto.Infrastructure.Persistence;
 
@@ -11,7 +12,7 @@ namespace Odonto.Api.Controllers;
 /// No lleva la policy TenantActivo (obviamente: es justo lo que falta).
 /// </summary>
 [ApiController]
-[Route("api/suscripcion")]
+[Route("api/v1/suscripcion")]
 [Authorize]
 public class SuscripcionController : ControllerBase
 {
@@ -77,5 +78,38 @@ public class SuscripcionController : ControllerBase
         await _db.SaveChangesAsync(ct);
 
         return Ok(new { initPoint, preapprovalId });
+    }
+
+    /// <summary>
+    /// Le pregunta directo a Mercado Pago el estado actual de la suscripción
+    /// y actualiza el tenant, sin depender de que el webhook haya llegado.
+    /// Pensado para: (a) desarrollo local, donde MP no puede pegarle al
+    /// webhook porque no hay URL pública, y (b) como red de seguridad en
+    /// producción si el webhook se pierde o se demora — el usuario puede
+    /// volver a esta pantalla después de pagar y forzar la actualización.
+    /// No lleva TenantActivo (es lo que justamente puede estar arreglando).
+    /// </summary>
+    [HttpPost("sincronizar-estado")]
+    public async Task<IActionResult> SincronizarEstado(CancellationToken ct)
+    {
+        var tenantIdClaim = User.FindFirst("tenant_id")?.Value;
+        if (!Guid.TryParse(tenantIdClaim, out var tenantId))
+            return BadRequest(new { message = "No se pudo determinar el tenant del usuario (¿sos SuperAdmin?)." });
+
+        var tenant = await _db.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId, ct);
+        if (tenant is null) return NotFound();
+
+        if (string.IsNullOrWhiteSpace(tenant.MercadoPagoPreapprovalId))
+            return BadRequest(new { message = "Todavía no iniciaste ningún pago para esta clínica." });
+
+        var estadoMp = await _mercadoPago.ObtenerEstadoAsync(tenant.MercadoPagoPreapprovalId, ct);
+        var cambio = EstadoMercadoPagoMapper.Aplicar(tenant, estadoMp);
+
+        if (cambio)
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+
+        return Ok(new { estado = tenant.Estado.ToString(), tienePagoActivo = tenant.TienePagoActivo, estadoMercadoPago = estadoMp });
     }
 }
