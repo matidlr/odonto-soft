@@ -14,6 +14,16 @@
   }
 }
 
+.ayuda-conceptos {
+  font-size: 0.85rem;
+  color: #4b5563;
+  background: #f3f4f6;
+  border-radius: 6px;
+  padding: 0.65rem 0.85rem;
+  margin: 0 0 1rem;
+  line-height: 1.5;
+}
+
 .alerta-stock {
   background: #fef3c7;
   color: #92400e;
@@ -51,6 +61,13 @@
       gap: 0.4rem;
       font-weight: 400;
     }
+  }
+
+  .ayuda-campo {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: #6b7280;
+    max-width: 220px;
   }
 
   .error {
@@ -181,15 +198,41 @@
   }
 
   .stock-actual {
-    margin: 0 0 1rem;
+    margin: 0 0 0.5rem;
     color: #374151;
   }
 }
 
+.ayuda-movimiento {
+  font-size: 0.8rem;
+  color: #6b7280;
+  line-height: 1.5;
+  margin: 0 0 0.85rem;
+}
+
 .form-movimiento {
   display: flex;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: flex-end;
   margin-bottom: 1rem;
+
+  .campo-movimiento {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+
+    label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #374151;
+    }
+  }
+
+  .campo-motivo {
+    flex: 1;
+    min-width: 140px;
+  }
 
   input {
     padding: 0.4rem;
@@ -202,13 +245,14 @@
   }
 
   input[type='text'] {
-    flex: 1;
+    width: 100%;
   }
 
   button {
+    height: 36px;
     border: none;
     border-radius: 6px;
-    padding: 0.4rem 0.7rem;
+    padding: 0 0.7rem;
     cursor: pointer;
     color: white;
     font-size: 0.85rem;

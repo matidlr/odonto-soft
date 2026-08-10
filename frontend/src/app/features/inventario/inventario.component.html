@@ -5,6 +5,14 @@
   </button>
 </div>
 
+<p class="ayuda-conceptos">
+  <strong>Stock actual</strong> es lo que hay ahora — se calcula solo, sumando y
+  restando los movimientos que registrés (Entrada/Salida).
+  <strong>Stock mínimo</strong> es el número debajo del cual el sistema avisa
+  "Stock bajo" para que sepas que hay que reponer; no es una cantidad, es el
+  aviso.
+</p>
+
 @if (cantidadAlertas() > 0) {
   <div class="alerta-stock">
     ⚠️ {{ cantidadAlertas() }} insumo(s) con stock por debajo del mínimo.
@@ -32,11 +40,13 @@
     <div class="fila-form">
       <label>Stock mínimo*</label>
       <input type="number" min="0" step="0.01" name="stockMinimo" [(ngModel)]="form.stockMinimo" required />
+      <span class="ayuda-campo">Aviso de "Stock bajo" cuando el stock actual caiga debajo de este número.</span>
     </div>
     @if (!editandoId()) {
       <div class="fila-form">
-        <label>Stock inicial</label>
+        <label>Stock inicial (cuánto tenés ahora)</label>
         <input type="number" min="0" step="0.01" name="stockInicial" [(ngModel)]="form.stockInicial" />
+        <span class="ayuda-campo">Se carga una sola vez, al crear el insumo. Después el stock se actualiza solo con los movimientos de Entrada/Salida.</span>
       </div>
     } @else {
       <div class="fila-form checkbox">
@@ -120,9 +130,21 @@
         Stock actual: <strong>{{ movimientosDe()!.stockActual | number: '1.0-2' }} {{ movimientosDe()!.unidad }}</strong>
       </p>
 
+      <p class="ayuda-movimiento">
+        Registrá acá cada vez que entra o sale mercadería, para que el stock
+        actual quede al día: <strong>Entrada</strong> suma (por ejemplo, compraste
+        más), <strong>Salida</strong> resta (se usó, se rompió, venció).
+      </p>
+
       <div class="form-movimiento">
-        <input type="number" min="0" step="0.01" [(ngModel)]="cantidadMovimiento" placeholder="Cantidad" />
-        <input type="text" [(ngModel)]="motivoMovimiento" placeholder="Motivo (opcional)" />
+        <div class="campo-movimiento">
+          <label>Cantidad a sumar o restar</label>
+          <input type="number" min="0" step="0.01" [(ngModel)]="cantidadMovimiento" placeholder="Ej: 5" />
+        </div>
+        <div class="campo-movimiento campo-motivo">
+          <label>Motivo (opcional)</label>
+          <input type="text" [(ngModel)]="motivoMovimiento" placeholder="Ej: compra, se rompió, vencido" />
+        </div>
         <button type="button" class="btn-entrada" [disabled]="guardandoMovimiento()" (click)="registrarMovimiento(1)">+ Entrada</button>
         <button type="button" class="btn-salida" [disabled]="guardandoMovimiento()" (click)="registrarMovimiento(-1)">− Salida</button>
       </div>
