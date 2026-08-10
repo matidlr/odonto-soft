@@ -1,1 +1,132 @@
-/* You can add global styles to this file, and also import other style files */
+/* Estilos globales de Odonto SaaS.
+   Antes esto estaba vacío y cada pantalla definía sus propios colores a
+   mano (repetidos, casi siempre los mismos valores) — acá quedan como
+   variables CSS para que todo el sitio use la misma paleta, y con estilos
+   base para los elementos de formulario más comunes (botón, input, select),
+   así hasta las pantallas que no se tocaron todavía se ven más prolijas
+   sin tener que reescribirlas una por una. */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Paleta: la que ya se venía usando de hecho en la mayoría de las
+     pantallas (azul/slate), formalizada acá para no repetir hex sueltos. */
+  --color-primario: #2563eb;
+  --color-primario-oscuro: #1d4ed8;
+  --color-primario-suave: #eff6ff;
+
+  --color-exito: #15803d;
+  --color-exito-suave: #f0fdf4;
+  --color-peligro: #b91c1c;
+  --color-peligro-suave: #fef2f2;
+  --color-advertencia: #b45309;
+  --color-advertencia-suave: #fffbeb;
+
+  --color-texto: #1e293b;
+  --color-texto-suave: #64748b;
+  --color-borde: #e2e8f0;
+  --color-fondo: #f8fafc;
+  --color-superficie: #ffffff;
+
+  --radio-sm: 6px;
+  --radio-md: 10px;
+  --radio-lg: 16px;
+
+  --sombra-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --sombra-md: 0 4px 16px rgba(15, 23, 42, 0.08);
+
+  --fuente: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--fuente);
+  color: var(--color-texto);
+  background: var(--color-fondo);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+a {
+  color: var(--color-primario);
+}
+
+/* Botones: casi toda la app usa <button> plano sin clase — esto le da una
+   base decente a todos de una. Los que ya tienen su propio color de fondo
+   (background) por componente lo mantienen, esto solo pareja el resto
+   (radio, transición, cursor, tipografía). */
+button {
+  font-family: inherit;
+  font-size: 0.9rem;
+  border-radius: var(--radio-sm);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, transform 0.05s ease;
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+/* Inputs, selects y textareas: mismo criterio, base prolija + foco visible
+   con el color primario en vez del contorno azul feo por defecto del
+   navegador. */
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 0.9rem;
+  border-radius: var(--radio-sm);
+  border: 1px solid #cbd5e1;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-primario);
+    box-shadow: 0 0 0 3px var(--color-primario-suave);
+  }
+}
+
+table {
+  font-family: inherit;
+}
+
+/* Scrollbar más fina y discreta (Chrome/Edge/Safari) — cosmético, no
+   afecta a Firefox, que usa su propio scrollbar delgado por defecto. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+
+  &:hover {
+    background: #94a3b8;
+  }
+}

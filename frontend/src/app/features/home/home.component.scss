@@ -2,25 +2,25 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.75rem;
 
   h1 {
-    margin: 0 0 0.35rem;
-    font-size: 1.5rem;
-    color: #1e293b;
+    margin: 0 0 0.4rem;
+    font-size: 1.6rem;
+    color: var(--color-texto);
   }
 }
 
 .rol-badge {
   display: inline-block;
-  padding: 0.15rem 0.6rem;
+  padding: 0.2rem 0.65rem;
   border-radius: 999px;
-  background: #e2e8f0;
-  color: #475569;
-  font-size: 0.75rem;
-  font-weight: 600;
+  background: var(--color-primario-suave);
+  color: var(--color-primario-oscuro);
+  font-size: 0.72rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }
 
 .aviso {
@@ -73,14 +73,20 @@
 }
 
 .tarjeta {
-  background: white;
-  border-radius: 8px;
-  padding: 1.25rem;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-md);
+  padding: 1.35rem;
+  box-shadow: var(--sombra-sm);
   width: 320px;
+  transition: box-shadow 0.15s ease;
+
+  &:hover {
+    box-shadow: var(--sombra-md);
+  }
 
   h2 {
-    margin: 0 0 0.75rem;
+    margin: 0 0 0.85rem;
     font-size: 1rem;
   }
 
@@ -103,14 +109,19 @@
 
   a {
     font-size: 0.85rem;
-    color: #2563eb;
+    color: var(--color-primario);
     text-decoration: none;
+    font-weight: 500;
+
+    &:hover {
+      text-decoration: underline;
+    }
   }
 
   .chip {
     float: right;
-    background: #f1f5f9;
-    color: #555;
+    background: var(--color-fondo);
+    color: var(--color-texto-suave);
     padding: 0.1rem 0.5rem;
     border-radius: 999px;
     font-size: 0.75rem;
