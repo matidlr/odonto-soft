@@ -44,6 +44,17 @@ else {
     exit 1
 }
 
+# Retencion: borra backups de mas de $DiasRetencion dias para que la carpeta
+# no crezca para siempre. Se corre siempre al final, incluso si algun dia
+# cambias el horario o corres el script a mano.
+$DiasRetencion = 30
+$limite = (Get-Date).AddDays(-$DiasRetencion)
+$viejos = Get-ChildItem -Path $carpetaBackups -Filter "odonto_backup_*.sql" | Where-Object { $_.LastWriteTime -lt $limite }
+if ($viejos) {
+    Write-Host "Borrando $($viejos.Count) backup(s) de mas de $DiasRetencion dias..."
+    $viejos | Remove-Item -Force
+}
+
 # -- Para que corra solo, todos los dias --------------------------------
 # Una sola vez, desde PowerShell (como administrador si te lo pide):
 #
