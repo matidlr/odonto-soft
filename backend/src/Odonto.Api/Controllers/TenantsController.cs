@@ -61,7 +61,7 @@ public class TenantsController : ControllerBase
     // Catálogo de planes activos: lo usa tanto el selector del SuperAdmin
     // como la pantalla de "Plan" de cada clínica (para elegir a cuál
     // suscribirse), así que cualquier usuario logueado puede consultarlo.
-    [HttpGet("/api/planes")]
+    [HttpGet("/api/v1/planes")]
     [Authorize]
     public async Task<IActionResult> GetPlanes(CancellationToken ct)
     {
