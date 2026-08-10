@@ -1,5 +1,18 @@
 <div class="layout">
-  <aside class="sidebar">
+  <div class="barra-movil">
+    <button
+      type="button"
+      class="btn-hamburguesa"
+      (click)="alternarMenu()"
+      [attr.aria-expanded]="menuAbierto()"
+      aria-label="Abrir menú"
+    >
+      {{ menuAbierto() ? '✕' : '☰' }}
+    </button>
+    <span class="logo-movil">Odonto SaaS</span>
+  </div>
+
+  <aside class="sidebar" [class.abierto]="menuAbierto()">
     <div class="logo">Odonto SaaS</div>
 
     @if (contexto.hayMasDeUno()) {
@@ -16,7 +29,7 @@
       </div>
     }
 
-    <nav>
+    <nav (click)="cerrarMenu()">
       <a routerLink="/inicio" routerLinkActive="activo">Inicio</a>
       <a routerLink="/estadisticas" routerLinkActive="activo">Estadísticas</a>
       <a routerLink="/agenda" routerLinkActive="activo">Agenda</a>

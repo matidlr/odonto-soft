@@ -3,6 +3,13 @@
   min-height: 100vh;
 }
 
+// Barra con el botón de menú: solo se ve en celular (ver media query al
+// final). En computadora el sidebar ya está siempre visible, así que no
+// hace falta.
+.barra-movil {
+  display: none;
+}
+
 .sidebar {
   width: 240px;
   flex-shrink: 0;
@@ -123,4 +130,65 @@
   flex: 1;
   padding: 2.25rem 2.5rem;
   min-width: 0;
+}
+
+// Celular: el sidebar y el contenido no entran lado a lado, así que no
+// conviven — arranca cerrado (display: none) y solo se ve la barra
+// superior con el botón de menú. Al abrirlo, el menú pasa a ocupar toda
+// la pantalla (no una franja angosta con el contenido atrás); al tocar
+// una sección, el nav dispara cerrarMenu() y vuelve a verse el contenido
+// a pantalla completa. La barra superior queda siempre por encima (más
+// z-index) para poder cerrar el menú con el mismo botón.
+@media (max-width: 768px) {
+  .layout {
+    flex-direction: column;
+  }
+
+  .barra-movil {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3.25rem;
+    padding: 0 1rem;
+    background: #0f172a;
+    color: white;
+    z-index: 60;
+    box-shadow: var(--sombra-sm);
+
+    .btn-hamburguesa {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.3rem;
+      line-height: 1;
+      padding: 0.25rem 0.5rem;
+    }
+
+    .logo-movil {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+  }
+
+  .sidebar {
+    display: none;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100vh;
+    z-index: 50;
+    padding-top: 4.5rem;
+
+    &.abierto {
+      display: flex;
+    }
+  }
+
+  .contenido {
+    padding: 4.75rem 1.25rem 1.5rem;
+  }
 }
