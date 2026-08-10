@@ -34,6 +34,10 @@ export class PacienteService {
     return firstValueFrom(this.http.get<Paciente[]>(`${API_BASE_URL}/pacientes`, { params }));
   }
 
+  getById(id: string): Promise<Paciente> {
+    return firstValueFrom(this.http.get<Paciente>(`${API_BASE_URL}/pacientes/${id}`));
+  }
+
   crear(datos: CrearPacienteRequest): Promise<{ id: string }> {
     return firstValueFrom(this.http.post<{ id: string }>(`${API_BASE_URL}/pacientes`, datos));
   }

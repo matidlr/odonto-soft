@@ -1,0 +1,115 @@
+@if (cargando()) {
+  <p>Cargando...</p>
+} @else if (!paciente()) {
+  <p class="error">{{ error() ?? 'Paciente no encontrado.' }}</p>
+} @else {
+  <div class="volver">
+    <button type="button" class="btn-volver" (click)="volver()">&larr; Volver a Pacientes</button>
+  </div>
+
+  <div class="header">
+    <div>
+      <h1>
+        {{ paciente()!.nombre }}
+        @if (!paciente()!.activo) { <span class="etiqueta-baja">Dado de baja</span> }
+      </h1>
+    </div>
+    <div class="acciones-header">
+      @if (!editando()) {
+        <button type="button" (click)="abrirEdicion()">Editar</button>
+        @if (paciente()!.activo) {
+          <button type="button" class="btn-baja" [disabled]="accionando()" (click)="darDeBaja()">
+            Dar de baja
+          </button>
+        } @else {
+          <button type="button" class="btn-reactivar" [disabled]="accionando()" (click)="reactivar()">
+            Reactivar
+          </button>
+        }
+      }
+    </div>
+  </div>
+
+  @if (error() && !editando()) {
+    <p class="error">{{ error() }}</p>
+  }
+
+  @if (editando()) {
+    <form class="form-paciente" (ngSubmit)="guardar()" #form="ngForm">
+      <h2>Editar datos</h2>
+      <div class="fila">
+        <label>Nombre*</label>
+        <input name="nombre" type="text" [(ngModel)]="nombre" required />
+      </div>
+      <div class="fila">
+        <label>DNI</label>
+        <input name="dni" type="text" [(ngModel)]="dni" />
+      </div>
+      <div class="fila">
+        <label>Teléfono</label>
+        <input name="telefono" type="text" [(ngModel)]="telefono" />
+      </div>
+      <div class="fila">
+        <label>Email</label>
+        <input name="email" type="email" [(ngModel)]="email" />
+      </div>
+      <div class="fila">
+        <label>Fecha de nacimiento</label>
+        <input name="fechaNacimiento" type="date" [(ngModel)]="fechaNacimiento" />
+      </div>
+      <div class="fila">
+        <label>Odontólogo principal</label>
+        <select name="odontologoPrincipal" [(ngModel)]="odontologoPrincipalId">
+          <option value="">(sin asignar)</option>
+          @for (o of contexto.odontologos(); track o.id) {
+            <option [value]="o.id">{{ o.nombre }}</option>
+          }
+        </select>
+      </div>
+
+      @if (error()) {
+        <p class="error">{{ error() }}</p>
+      }
+
+      <div class="acciones-form">
+        <button type="submit" [disabled]="form.invalid || guardando()">
+          {{ guardando() ? 'Guardando...' : 'Guardar cambios' }}
+        </button>
+        <button type="button" class="btn-cancelar" (click)="cancelarEdicion()">Cancelar</button>
+      </div>
+    </form>
+  } @else {
+    <div class="datos-paciente">
+      <div class="dato">
+        <span class="etiqueta">DNI</span>
+        <span class="valor">{{ paciente()!.dni || '—' }}</span>
+      </div>
+      <div class="dato">
+        <span class="etiqueta">Teléfono</span>
+        <span class="valor">{{ paciente()!.telefono || '—' }}</span>
+      </div>
+      <div class="dato">
+        <span class="etiqueta">Email</span>
+        <span class="valor">{{ paciente()!.email || '—' }}</span>
+      </div>
+      <div class="dato">
+        <span class="etiqueta">Fecha de nacimiento</span>
+        <span class="valor">{{ paciente()!.fechaNacimiento || '—' }}</span>
+      </div>
+      <div class="dato">
+        <span class="etiqueta">Odontólogo principal</span>
+        <span class="valor">{{ odontologoPrincipalNombre() }}</span>
+      </div>
+    </div>
+  }
+
+  <h2 class="titulo-secciones">Historia y gestión</h2>
+  <div class="grid-secciones">
+    @for (s of secciones; track s.path) {
+      <a class="tarjeta-seccion" [routerLink]="['/pacientes', pacienteId, s.path]">
+        <span class="icono">{{ s.icono }}</span>
+        <span>{{ s.etiqueta }}</span>
+      </a>
+    }
+  </div>
+}

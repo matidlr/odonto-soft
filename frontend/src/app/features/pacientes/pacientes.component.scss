@@ -9,22 +9,27 @@
   }
 
   button {
-    padding: 0.5rem 1rem;
+    padding: 0.55rem 1.1rem;
     border: none;
-    border-radius: 6px;
-    background: #2563eb;
+    border-radius: var(--radio-sm);
+    background: var(--color-primario);
     color: white;
-    cursor: pointer;
+    font-weight: 600;
+
+    &:hover {
+      background: var(--color-primario-oscuro);
+    }
   }
 }
 
 .form-paciente {
-  background: white;
-  padding: 1.25rem;
-  border-radius: 8px;
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  padding: 1.35rem;
+  border-radius: var(--radio-md);
   max-width: 420px;
   margin-bottom: 1.5rem;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--sombra-sm);
 
   .fila {
     display: flex;
@@ -97,61 +102,39 @@
 .tabla-pacientes {
   width: 100%;
   border-collapse: collapse;
-  background: white;
-  border-radius: 8px;
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-md);
   overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--sombra-sm);
 
   th,
   td {
     text-align: left;
-    padding: 0.6rem 0.9rem;
-    border-bottom: 1px solid #eee;
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--color-borde);
+  }
+
+  tbody tr:hover {
+    background: var(--color-fondo);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
   }
 
   th {
-    background: #f1f5f9;
-    font-size: 0.8rem;
-    color: #555;
+    background: var(--color-fondo);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--color-texto-suave);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
 }
 
-.btn-editar {
-  padding: 0.3rem 0.6rem;
-  border: none;
-  border-radius: 6px;
-  background: #f1f5f9;
-  color: #2563eb;
+.fila-clickeable {
   cursor: pointer;
-  font-size: 0.8rem;
-}
-
-.btn-baja {
-  padding: 0.3rem 0.6rem;
-  border: 1px solid #b91c1c;
-  border-radius: 6px;
-  background: white;
-  color: #b91c1c;
-  cursor: pointer;
-  font-size: 0.8rem;
-
-  &:disabled {
-    opacity: 0.6;
-  }
-}
-
-.btn-reactivar {
-  padding: 0.3rem 0.6rem;
-  border: 1px solid #16803c;
-  border-radius: 6px;
-  background: white;
-  color: #16803c;
-  cursor: pointer;
-  font-size: 0.8rem;
-
-  &:disabled {
-    opacity: 0.6;
-  }
 }
 
 .fila-inactiva {

@@ -97,6 +97,29 @@ public class PacientesController : ControllerBase
         return Ok(pacientes);
     }
 
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
+    {
+        var paciente = await _db.Pacientes
+            .Where(p => p.Id == id)
+            .Select(p => new
+            {
+                p.Id,
+                p.Nombre,
+                p.Dni,
+                p.Telefono,
+                p.Email,
+                p.FechaNacimiento,
+                p.OdontologoPrincipalId,
+                p.Activo
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (paciente is null) return NotFound(new { message = "Paciente no encontrado." });
+
+        return Ok(paciente);
+    }
+
     public record CrearPacienteRequest(
         string Nombre,
         string? Dni,

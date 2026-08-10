@@ -19,10 +19,6 @@ export class PacientesComponent implements OnInit {
   error = signal<string | null>(null);
   busqueda = signal('');
   mostrarInactivos = signal(false);
-  accionandoId = signal<string | null>(null);
-
-  // Si tiene valor, el form está editando ese paciente en vez de crear uno nuevo.
-  editandoId = signal<string | null>(null);
 
   nombre = '';
   dni = '';
@@ -77,57 +73,14 @@ export class PacientesComponent implements OnInit {
     await this.cargar();
   }
 
-  async darDeBaja(p: Paciente): Promise<void> {
-    if (!confirm(`¿Dar de baja a ${p.nombre}? No aparece más en el listado, pero su historia clínica se conserva.`)) return;
-
-    this.error.set(null);
-    this.accionandoId.set(p.id);
-    try {
-      await this.pacienteService.eliminar(p.id);
-      await this.cargar();
-    } catch (err: unknown) {
-      const httpError = err as { error?: { message?: string } };
-      this.error.set(httpError?.error?.message ?? 'No se pudo dar de baja al paciente.');
-    } finally {
-      this.accionandoId.set(null);
-    }
-  }
-
-  async reactivar(p: Paciente): Promise<void> {
-    this.error.set(null);
-    this.accionandoId.set(p.id);
-    try {
-      await this.pacienteService.reactivar(p.id);
-      await this.cargar();
-    } catch (err: unknown) {
-      const httpError = err as { error?: { message?: string } };
-      this.error.set(httpError?.error?.message ?? 'No se pudo reactivar al paciente.');
-    } finally {
-      this.accionandoId.set(null);
-    }
-  }
-
   abrirNuevo(): void {
-    this.editandoId.set(null);
     this.limpiarForm();
     this.odontologoPrincipalId = this.contexto.seleccionadoId() ?? '';
     this.mostrarForm.set(true);
   }
 
-  editar(p: Paciente): void {
-    this.editandoId.set(p.id);
-    this.nombre = p.nombre;
-    this.dni = p.dni ?? '';
-    this.telefono = p.telefono ?? '';
-    this.email = p.email ?? '';
-    this.fechaNacimiento = p.fechaNacimiento ? p.fechaNacimiento.slice(0, 10) : '';
-    this.odontologoPrincipalId = p.odontologoPrincipalId ?? '';
-    this.mostrarForm.set(true);
-  }
-
   cancelar(): void {
     this.mostrarForm.set(false);
-    this.editandoId.set(null);
   }
 
   private limpiarForm(): void {
@@ -139,25 +92,17 @@ export class PacientesComponent implements OnInit {
     this.error.set(null);
     this.guardando.set(true);
     try {
-      const datos = {
+      await this.pacienteService.crear({
         nombre: this.nombre,
         dni: this.dni || undefined,
         telefono: this.telefono || undefined,
         email: this.email || undefined,
         fechaNacimiento: this.fechaNacimiento || undefined,
         odontologoPrincipalId: this.odontologoPrincipalId || undefined
-      };
-
-      const id = this.editandoId();
-      if (id) {
-        await this.pacienteService.editar(id, datos);
-      } else {
-        await this.pacienteService.crear(datos);
-      }
+      });
 
       this.limpiarForm();
       this.mostrarForm.set(false);
-      this.editandoId.set(null);
       await this.cargar();
     } catch (err: unknown) {
       const httpError = err as { status?: number; error?: { message?: string }; message?: string };

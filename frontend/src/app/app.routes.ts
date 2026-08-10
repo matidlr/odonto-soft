@@ -24,6 +24,13 @@ export const routes: Routes = [
           import('./features/pacientes/pacientes.component').then((m) => m.PacientesComponent)
       },
       {
+        path: 'pacientes/:pacienteId',
+        loadComponent: () =>
+          import('./features/pacientes/ficha-paciente.component').then(
+            (m) => m.FichaPacienteComponent
+          )
+      },
+      {
         path: 'pacientes/:pacienteId/odontograma',
         loadComponent: () =>
           import('./features/odontograma/odontograma.component').then(
